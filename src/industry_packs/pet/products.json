@@ -1,0 +1,17 @@
+[
+  {"product_name": "犬只基础洗护", "unit_price": 88.0, "cost_price": 18.0, "category": "洗护"},
+  {"product_name": "犬只精洗造型", "unit_price": 168.0, "cost_price": 35.0, "category": "洗护"},
+  {"product_name": "猫只洗护", "unit_price": 128.0, "cost_price": 25.0, "category": "洗护"},
+  {"product_name": "猫咪去毛球护理", "unit_price": 98.0, "cost_price": 18.0, "category": "护理"},
+  {"product_name": "宠物剪指甲", "unit_price": 30.0, "cost_price": 3.0, "category": "基础"},
+  {"product_name": "宠物挤肛门腺", "unit_price": 40.0, "cost_price": 5.0, "category": "基础"},
+  {"product_name": "宠物药浴", "unit_price": 158.0, "cost_price": 45.0, "category": "医疗辅助"},
+  {"product_name": "宠物剃毛", "unit_price": 138.0, "cost_price": 28.0, "category": "洗护"},
+  {"product_name": "宠物寄养(日)", "unit_price": 68.0, "cost_price": 15.0, "category": "寄养"},
+  {"product_name": "宠物接送", "unit_price": 30.0, "cost_price": 8.0, "category": "增值"},
+  {"product_name": "宠物驱虫", "unit_price": 80.0, "cost_price": 25.0, "category": "医疗辅助"},
+  {"product_name": "宠物疫苗", "unit_price": 120.0, "cost_price": 60.0, "category": "医疗辅助"},
+  {"product_name": "宠物口腔护理", "unit_price": 68.0, "cost_price": 15.0, "category": "护理"},
+  {"product_name": "宠物SPA", "unit_price": 198.0, "cost_price": 48.0, "category": "护理"},
+  {"product_name": "宠物摄影", "unit_price": 99.0, "cost_price": 10.0, "category": "增值"}
+]

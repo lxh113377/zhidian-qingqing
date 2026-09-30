@@ -1,0 +1,29 @@
+{
+  "manifest_format": 1,
+  "pack_id": "convenience",
+  "pack_version": "1.0.0",
+  "schema_min": 1,
+  "schema_max": 1,
+  "requires": [
+    "custom_terms",
+    "dashboard_labels",
+    "decision_cockpit",
+    "free_metrics",
+    "multi_store",
+    "negotiation",
+    "pack_products",
+    "pack_scoped_unique"
+  ],
+  "vendor": "builtin",
+  "exported_at": "None",
+  "integrity": {
+    "knowledge/保质期管理.md": "sha256:eda1e840aa36ce826d5265e467dc8e6af20c0a1e1505688a6617d45cab587d7c",
+    "knowledge/商品陈列.md": "sha256:4e988ec2e7b6c4f0dc458fcf011f936dbc0c84dda105dfebf2ba78d015726b90",
+    "knowledge/客诉处理.md": "sha256:74a01d6981d51a083427ba3b5197c72010144fbc8e4fb4d9759dd8064d80d846",
+    "knowledge/收银规范.md": "sha256:dd26c38dba93e291a5ef831404e126a913ed74d3d529a37b8bf4ffe3fcee2516",
+    "pack.json": "sha256:ade9036654b13102238573a3851dd36841013837a78ffce5d1cae4aecbc0f847",
+    "products.json": "sha256:9052529fd708cffbe93cbdfe5a85cb19b4d161228c002bcab0ea6f608d7fdb0e",
+    "questions.json": "sha256:86ecde01c3380e3b5e397c26d24eed3ff23b7cf106deafea954ddc0637db6d0a",
+    "scenarios.json": "sha256:9dc705989cacd8a1d9cde908213bda2c057d78a74d7ad2251f8e7cf1a36e01fd"
+  }
+}

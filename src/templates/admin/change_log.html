@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}变更记录 · 门店管理助手{% endblock %}
+{% block body_class %}is-admin{% endblock %}
+{% block content %}
+<div class="page-header">
+    <a href="{{ url_for('admin.dashboard') }}" class="btn-back">← 返回看板</a>
+    <h2>变更记录</h2>
+    <span class="badge badge-secondary">{{ rows|length }} 条</span>
+</div>
+
+<p class="form-hint">{{ scope_note }}</p>
+<p class="form-hint">
+    业务明细（营业流水、考核记录、AI 台账）只记「谁动了哪一条」，字段值一律不存；
+    产品、门店、账号、行业包这类主数据记改动前后的值。
+</p>
+
+{% if registry_problems %}
+<div class="alert alert-danger">归因名册与数据表对不上（记了等于没记）：{{ registry_problems|join('；') }}</div>
+{% endif %}
+{% if stats.failed %}
+<div class="alert alert-warning">有 {{ stats.failed }} 次审计写入失败：业务写入不受影响，但那一笔变更没有留痕，请核对。</div>
+{% endif %}
+
+{% if rows %}
+<div class="table-responsive">
+    <table class="table">
+        <caption class="sr-only">变更记录</caption>
+        <thead>
+            <tr>
+                <th scope="col">时间</th>
+                <th scope="col">操作者</th>
+                <th scope="col">对象</th>
+                <th scope="col">动作</th>
+                <th scope="col">来源</th>
+                <th scope="col">改了什么</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for r in rows %}
+            <tr>
+                <td data-label="时间">{{ r.changed_at }}</td>
+                <td data-label="操作者">{{ r.actor }}{% if r.actor_role %}（{{ r.actor_role }}）{% endif %}</td>
+                <td data-label="对象">{{ r.entity }}#{{ r.entity_pk }}</td>
+                <td data-label="动作"><span class="badge badge-secondary">{{ r.action }}</span></td>
+                <td data-label="来源">{{ r.source }}</td>
+                <td data-label="改了什么">
+                    {% if r.bulk %}
+                    批量 {{ r.rows }} 行 · {{ r.detail }}
+                    {% elif not r.diff %}
+                    值不记录（业务明细档）
+                    {% else %}
+                    <ul>
+                        {% for item in r.diff %}
+                        <li>{{ item.field }}：{{ item.before }} → {{ item.after }}</li>
+                        {% endfor %}
+                    </ul>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<p class="empty-state">还没有变更记录。改一次产品售价再回到这里，就能看到是谁改的、从多少改到多少。</p>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,55 @@
+# ruff 静态检查配置 —— 质量门禁第 7 项（quality_gate.py）的单一真相源。
+#
+# 为什么需要这个文件：
+#   ruff 在缺省配置时会向上级目录回溯查找配置，导致同一份代码在不同机器 /
+#   不同工作区下启用的规则集不一致，门禁结论随环境漂移、不可复现。
+#   显式固定规则集后，任何人在任何机器执行 `ruff check src` 结果一致。
+
+line-length = 110
+target-version = "py312"
+
+# 参赛交付物目录是历史快照，不参与现网代码的静态检查。
+extend-exclude = ["iCAN-参赛交付物", ".ruff_cache", "__pycache__"]
+
+[lint]
+select = ["S", 
+    "E",      # pycodestyle 错误（含 E402 module-import-not-at-top）
+    "W",      # pycodestyle 警告
+    "F",      # pyflakes：未定义名/未使用导入
+    "I",      # isort：导入分组与排序
+    "UP",     # pyupgrade：过时写法
+    "B",      # flake8-bugbear：易错模式
+    "C4",     # flake8-comprehensions
+    "PIE",    # flake8-pie：冗余写法
+    "RUF",    # ruff 专有规则（含 RUF100 无效 noqa）
+    "PLR",    # pylint refactor（含 PLR0124 自比较）
+    "PLW",    # pylint warning
+]
+
+ignore = [
+    # 本项目注释与文案全部为中文，全角标点是正确写法而非「易混淆字符」。
+    # 不豁免会产生上千条纯噪声告警，淹没真正的问题。
+    "RUF001", "RUF002", "RUF003",
+    # 防腐层（dify_client）刻意捕获宽异常：外部 AI 服务的失败形态不可穷举，
+    # 一旦漏网就会把堆栈/内网地址透传到前端（F7）。这里的宽捕获是设计意图。
+    "BLE001",
+    # 业务按「本地自然日」记账（record_date），date.today() 即所需语义，
+    # 强制带时区反而会在跨时区部署时把当日数据算到前一天。
+    "DTZ011",
+    # 断言型测试脚本大量使用 subprocess.run 收集输出后自行判定返回码。
+    "PLW1510",
+    # 魔法数字在校验上限、HTTP 状态码等场景下已有具名常量或语义自明。
+    "PLR2004",
+]
+
+[lint.per-file-ignores]
+# app.py 必须先 load_dotenv() 再 import src.config（F3 配置契约），
+# 这几行的 E402 是不可避免的，已在源码就地标注 noqa 并说明原因。
+"src/app.py" = []
+# 测试脚本需要在 import 前设置环境变量，同样存在合理的顶层语句先行。
+"smoke_test.py" = ["E402"]
+"test_vuln_regression.py" = ["E402"]
+"quality_gate.py" = ["E402"]
+
+[lint.isort]
+known-first-party = ["src"]

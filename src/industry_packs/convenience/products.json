@@ -1,0 +1,17 @@
+[
+  {"product_name": "关东煮(串)", "unit_price": 3.5, "cost_price": 1.5, "category": "热食"},
+  {"product_name": "金枪鱼饭团", "unit_price": 6.5, "cost_price": 4.2, "category": "鲜食"},
+  {"product_name": "现磨咖啡(中杯)", "unit_price": 12.0, "cost_price": 3.8, "category": "现制饮品"},
+  {"product_name": "可乐500ml", "unit_price": 3.5, "cost_price": 2.2, "category": "饮料"},
+  {"product_name": "三明治", "unit_price": 8.9, "cost_price": 5.5, "category": "鲜食"},
+  {"product_name": "卤蛋", "unit_price": 2.0, "cost_price": 0.8, "category": "热食"},
+  {"product_name": "矿泉水550ml", "unit_price": 2.0, "cost_price": 1.0, "category": "饮料"},
+  {"product_name": "冰红茶500ml", "unit_price": 3.5, "cost_price": 2.1, "category": "饮料"},
+  {"product_name": "薯片(大包)", "unit_price": 6.5, "cost_price": 4.0, "category": "零食"},
+  {"product_name": "巧克力棒", "unit_price": 5.0, "cost_price": 3.2, "category": "零食"},
+  {"product_name": "关东煮萝卜", "unit_price": 2.5, "cost_price": 1.2, "category": "热食"},
+  {"product_name": "茶叶蛋", "unit_price": 2.0, "cost_price": 0.9, "category": "热食"},
+  {"product_name": "泡面(桶装)", "unit_price": 5.5, "cost_price": 3.6, "category": "速食"},
+  {"product_name": "酸奶(杯)", "unit_price": 4.5, "cost_price": 2.8, "category": "乳品"},
+  {"product_name": "面包(袋装)", "unit_price": 6.0, "cost_price": 3.9, "category": "鲜食"}
+]

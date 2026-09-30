@@ -1,0 +1,32 @@
+{# AI 决策轨迹时间线（P6）——管理员智能助手 / 经营分析共用
+   用法一（整页）：{% import "admin/_agent_trace.html" as t %}{{ t.timeline(trace) }}
+   用法二（AJAX 片段）：render_template('admin/_agent_trace.html', trace=trace, standalone=True)
+   默认折叠为一行摘要（原生 details，无 JS 也可展开），来源徽章区分「大模型生成 / 规则版」。 #}
+{% macro timeline(trace) %}
+{%- if trace and trace.steps %}
+<details class="agent-trace">
+    <summary class="trace-summary">
+        <span class="badge badge-{{ 'success' if trace.source in ('dify', 'deepseek') else 'warning' }}">{{ trace.source_label }}</span>
+        <span class="trace-title">AI 决策轨迹</span>
+        <span class="trace-meta">{{ trace.steps|length }} 步 · {{ trace.total_ms }} ms</span>
+    </summary>
+    <ol class="trace-steps">
+    {% for s in trace.steps %}
+        <li class="trace-step{{ ' is-fail' if not s.ok }}">
+            <div class="trace-step-head">
+                <span class="trace-step-name">{{ s.name }}</span>
+                <span class="badge badge-{{ 'success' if s.source in ('dify', 'deepseek') else 'warning' }}">{{ s.source_label }}</span>
+                <span class="trace-ms">{{ s.latency_ms }} ms</span>
+            </div>
+            {% if s.input_summary %}
+            <div class="trace-io"><span class="trace-io-k">输入</span><span class="trace-io-v">{{ s.input_summary }}</span></div>
+            {% endif %}
+            <div class="trace-io"><span class="trace-io-k">输出</span><span class="trace-io-v">{{ s.output_summary }}</span></div>
+        </li>
+    {% endfor %}
+    </ol>
+    <p class="record-note neutral">轨迹为本次推理的真实记录：数据取自门店填报与知识库，结论仅供参考。</p>
+</details>
+{%- endif %}
+{% endmacro %}
+{% if standalone %}{{ timeline(trace) }}{% endif %}

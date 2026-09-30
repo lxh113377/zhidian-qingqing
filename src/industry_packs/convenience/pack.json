@@ -1,0 +1,129 @@
+{
+  "schema_version": 1,
+  "id": "convenience",
+  "name": "便利店",
+  "version": "1.0.0",
+  "description": "便利店行业包：多 SKU 标准零售，无原料库存角色（损耗族自动关闭，验收点）",
+  "terms": {
+    "store": "门店",
+    "record_dimension": "商品",
+    "record_dimension_plural": "商品",
+    "quantity_unit": "件",
+    "material_group": "货架情况",
+    "material_remaining": "货架存量",
+    "material_waste": "报损数量",
+    "material_unit": "件",
+    "staff_title": "店员",
+    "customer_title": "顾客",
+    "assistant_persona": "你是便利店经营助手",
+    "analyst_persona": "你是便利店经营分析师",
+    "trainer_persona": "你是便利店培训教练",
+    "scenario_customer": "便利店顾客",
+    "report_footer": "便利店经营参考",
+    "sample_dimension": "鲜牛奶",
+    "sample_shelf_question": "鲜牛奶临期了怎么处理？"
+  },
+  "domains": [
+    {
+      "name": "商品陈列",
+      "knowledge_file": "商品陈列.md",
+      "tip": "牢记黄金陈列位与前进陈列原则，练习排面整理与促销堆头的摆放规范",
+      "keywords": ["陈列", "摆放", "货架", "排面"]
+    },
+    {
+      "name": "保质期管理",
+      "knowledge_file": "保质期管理.md",
+      "tip": "熟记「过 2/3 保质期即临期」的口径与鲜食废弃时点，坚持早班效期翻检",
+      "keywords": ["保质期", "效期", "临期", "过期"]
+    },
+    {
+      "name": "收银规范",
+      "knowledge_file": "收银规范.md",
+      "tip": "坚持唱收唱付与标准收银七步，练习扫码失败与高峰结账的应对流程",
+      "keywords": ["收银", "找零", "扫码", "结账"]
+    },
+    {
+      "name": "客诉处理",
+      "knowledge_file": "客诉处理.md",
+      "tip": "巩固「先致歉不辩解、先受理再走流程」原则，练习售后投诉与升级客诉的应对",
+      "keywords": ["投诉", "客诉", "差评", "退换"]
+    }
+  ],
+  "weak_keywords": ["陈列", "摆放", "货架", "排面", "保质期", "效期", "临期", "过期",
+                    "收银", "找零", "扫码", "结账", "投诉", "客诉", "退换"],
+  "synonyms": [
+    ["退钱", "退换"],
+    ["换货", "退换"],
+    ["刷脸", "扫码"],
+    ["付不了款", "扫码"],
+    ["摆货", "陈列"],
+    ["补货", "陈列"],
+    ["怎么", "如何"],
+    ["多少", "几"]
+  ],
+  "metrics": [
+    {
+      "key": "product_name",
+      "label": "商品",
+      "value_type": "text",
+      "unit": "",
+      "role": "dimension",
+      "agg": "count",
+      "required": true,
+      "sort": 1,
+      "legacy_column": "product_name"
+    },
+    {
+      "key": "product_sales_qty",
+      "label": "销量",
+      "value_type": "number",
+      "unit": "件",
+      "role": "quantity",
+      "agg": "sum",
+      "required": true,
+      "sort": 2,
+      "legacy_column": "product_sales_qty"
+    },
+    {
+      "key": "total_revenue",
+      "label": "营收",
+      "value_type": "number",
+      "unit": "元",
+      "role": "amount",
+      "agg": "sum",
+      "required": true,
+      "sort": 3,
+      "legacy_column": "total_revenue"
+    },
+    {
+      "key": "abnormal_notes",
+      "label": "异常备注",
+      "value_type": "text",
+      "unit": "",
+      "role": "note",
+      "agg": "none",
+      "required": false,
+      "sort": 4,
+      "legacy_column": "abnormal_notes"
+    },
+    {
+      "key": "coffee_sales",
+      "label": "现磨咖啡销量",
+      "value_type": "number",
+      "unit": "杯",
+      "role": "other",
+      "agg": "sum",
+      "required": false,
+      "sort": 5,
+      "legacy_column": ""
+    }
+  ],
+  "formula_params": {
+    "waste_rate_threshold": 0.15
+  },
+  "files": {
+    "questions": "questions.json",
+    "scenarios": "scenarios.json",
+    "products": "products.json"
+  }
+}

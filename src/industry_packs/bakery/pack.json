@@ -1,0 +1,143 @@
+{
+  "schema_version": 1,
+  "id": "bakery",
+  "name": "烘焙轻食店",
+  "version": "1.0.0",
+  "description": "现烤面包与轻食门店行业包（含发酵、烘烤、保质期与门店服务四域）",
+  "terms": {
+    "store": "门店",
+    "record_dimension": "产品",
+    "record_dimension_plural": "产品",
+    "quantity_unit": "个",
+    "material_group": "原料情况",
+    "material_remaining": "原料剩余",
+    "material_waste": "原料损耗",
+    "material_unit": "份",
+    "staff_title": "店员",
+    "customer_title": "顾客",
+    "assistant_persona": "你是烘焙店经营助手",
+    "analyst_persona": "你是烘焙店经营分析师",
+    "trainer_persona": "你是烘焙店培训教练",
+    "scenario_customer": "烘焙店顾客",
+    "report_footer": "烘焙店经营参考",
+    "sample_dimension": "全麦吐司",
+    "sample_shelf_question": "吐司常温能放几天？"
+  },
+  "domains": [
+    {
+      "name": "原料与发酵",
+      "knowledge_file": "原料与发酵.md",
+      "tip": "熟记面粉分类、酵母保存与发酵温湿度，强化「发酵不到位不上炉」的出品意识",
+      "keywords": ["原料", "酵母", "发酵", "面粉"]
+    },
+    {
+      "name": "烘烤与出品",
+      "knowledge_file": "烘烤与出品.md",
+      "tip": "掌握各品类烘烤温时与出炉判断，坚持「外观不达标不上架」",
+      "keywords": ["烘烤", "温度", "出品", "烤箱"]
+    },
+    {
+      "name": "保质期与损耗",
+      "knowledge_file": "保质期与损耗.md",
+      "tip": "牢记不同品类的储存条件与售卖窗口，强化「损耗率超 12% 即异常」的排查意识",
+      "keywords": ["保质期", "损耗", "储存", "报废"]
+    },
+    {
+      "name": "门店服务",
+      "knowledge_file": "门店服务.md",
+      "tip": "打磨推荐、切分、预订与过敏提示话术，坚持「出错先致歉再补救」",
+      "keywords": ["服务", "推荐", "预订", "过敏"]
+    }
+  ],
+  "weak_keywords": ["原料", "发酵", "烘烤", "温度", "保质期", "损耗", "储存", "服务", "推荐", "预订"],
+  "synonyms": [
+    ["省钱", "优惠"],
+    ["便宜", "优惠"],
+    ["折扣", "优惠"],
+    ["保存", "储存"],
+    ["存放", "储存"],
+    ["保质期", "效期"],
+    ["过期", "变质"],
+    ["怎么办", "如何"],
+    ["多少钱", "价格"],
+    ["价钱", "价格"],
+    ["好不好吃", "口味"],
+    ["推荐", "招牌"]
+  ],
+  "metrics": [
+    {
+      "key": "product_name",
+      "label": "产品",
+      "value_type": "text",
+      "unit": "",
+      "role": "dimension",
+      "agg": "count",
+      "required": true,
+      "sort": 1,
+      "legacy_column": "product_name"
+    },
+    {
+      "key": "product_sales_qty",
+      "label": "销量",
+      "value_type": "number",
+      "unit": "个",
+      "role": "quantity",
+      "agg": "sum",
+      "required": true,
+      "sort": 2,
+      "legacy_column": "product_sales_qty"
+    },
+    {
+      "key": "total_revenue",
+      "label": "营收",
+      "value_type": "number",
+      "unit": "元",
+      "role": "amount",
+      "agg": "sum",
+      "required": true,
+      "sort": 3,
+      "legacy_column": "total_revenue"
+    },
+    {
+      "key": "raw_material_remaining",
+      "label": "原料剩余",
+      "value_type": "number",
+      "unit": "份",
+      "role": "stock",
+      "agg": "sum",
+      "required": false,
+      "sort": 4,
+      "legacy_column": "raw_material_remaining"
+    },
+    {
+      "key": "raw_material_waste",
+      "label": "原料损耗",
+      "value_type": "number",
+      "unit": "份",
+      "role": "waste",
+      "agg": "sum",
+      "required": false,
+      "sort": 5,
+      "legacy_column": "raw_material_waste"
+    },
+    {
+      "key": "abnormal_notes",
+      "label": "异常备注",
+      "value_type": "text",
+      "unit": "",
+      "role": "note",
+      "agg": "none",
+      "required": false,
+      "sort": 6,
+      "legacy_column": "abnormal_notes"
+    }
+  ],
+  "formula_params": {
+    "waste_rate_threshold": 0.12
+  },
+  "files": {
+    "questions": "questions.json",
+    "scenarios": "scenarios.json",
+    "products": "products.json"
+  }
+}

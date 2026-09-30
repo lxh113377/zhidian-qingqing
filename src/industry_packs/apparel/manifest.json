@@ -1,0 +1,29 @@
+{
+  "manifest_format": 1,
+  "pack_id": "apparel",
+  "pack_version": "1.0.0",
+  "schema_min": 1,
+  "schema_max": 1,
+  "requires": [
+    "custom_terms",
+    "dashboard_labels",
+    "decision_cockpit",
+    "free_metrics",
+    "multi_store",
+    "negotiation",
+    "pack_products",
+    "pack_scoped_unique"
+  ],
+  "vendor": "builtin",
+  "exported_at": "None",
+  "integrity": {
+    "knowledge/会员与复购.md": "sha256:171019fd074b72e0b3087f26bd1fcbea66267866504e7ce616e10ec977dc26cf",
+    "knowledge/商品与陈列.md": "sha256:6f0a8f62f0bb9b97f186a0296287bb76d7d64c89f27317169b44e9393ba51556",
+    "knowledge/库存与退换.md": "sha256:3379c6363590f9ff7f8b327cd1f1913efcecc0effcf60ac516b1ec5aa599be83",
+    "knowledge/销售与搭配.md": "sha256:a2a52c3ecfb32338c38299556140e00e2e9603251dacecadfd530859adca8bfe",
+    "pack.json": "sha256:d429e1509d287e77dff881995c67f682c77e79bf447f82fc826739d708952d44",
+    "products.json": "sha256:4c1c6835544a93a7b42b859b7113e5a840c453fadf4f078fc06f5bd27af5c2d8",
+    "questions.json": "sha256:dfba1d9f6037f75b587a237291aed8a414b592e051c7c119187e0b7f3313f906",
+    "scenarios.json": "sha256:d2a764ac5b83ee61492c8b7a04ec2c33e7eb5f841f9337978d4bd2962ca8cea7"
+  }
+}

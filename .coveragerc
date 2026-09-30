@@ -1,0 +1,27 @@
+[run]
+source = src
+omit =
+    src/static/*
+    src/templates/*
+    src/industry_packs/*
+    .venv/*
+    .venv-test/*
+
+[report]
+# 地板出处：2026-09-26 用 `python run_coverage.py` 在三套件下实测 TOTAL 82%
+# （9565 statements / 1715 missing）。地板取 80 ⇒ 留 2 个点余量：抬地板必须
+# 与实测同时发生，否则每次门禁都红就等于把增长冻结了。
+fail_under = 80
+show_missing = True
+skip_covered = False
+exclude_lines =
+    pragma: no cover
+    if __name__ == .__main__.
+    raise NotImplementedError
+    pass
+    \.\.\.
+    return NotImplemented
+    if TYPE_CHECKING:
+
+[html]
+directory = htmlcov

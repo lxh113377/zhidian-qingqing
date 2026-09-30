@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="智电轻擎：全行业多门店轻量化 AI 管理平台。滚轮驱动的 3D 产品叙事页——多店发现异常、单店 AI 诊断、责任任务闭环、效果回看。" />
+    <meta name="theme-color" content="#04231F" />
+    <title>智电轻擎 · 让每一家小店都有经营大脑</title>
+    <!--
+      首帧关键样式（内联，2026-09-23 P0-1）：
+      HTML 到达即可绘出首屏文案与品牌页眉，不必等 React/three/gsap（gzip 约 215KB）下载完成，
+      消除弱网下的纯白屏。取值与 src/index.css 的令牌一致——**改一处必须同步另一处**。
+      作用域全部挂在 .boot 下：React 挂载并移除首帧节点后，这些规则自动失效，不与正式样式争层叠。
+    -->
+    <style>html,body{color:#e4ebe9;-webkit-font-smoothing:antialiased;background:#021412;margin:0;padding:0;font-family:Noto Sans SC,PingFang SC,Microsoft YaHei,system-ui,sans-serif;font-size:15px;line-height:1.65}#root{min-height:100vh}.boot{background-color:#04231f;background-image:radial-gradient(1100px 620px at 72% 18%,#0f766e59,#0000 62%),radial-gradient(900px 700px at 18% 82%,#0c3a348c,#0000 60%),none;background-position:0 0,0 0,0 0;background-repeat:repeat,repeat,repeat;background-size:auto,auto,auto;background-attachment:fixed;background-origin:padding-box,padding-box,padding-box;background-clip:border-box,border-box,border-box;position:relative}.boot a{color:#5eead4}.boot .topbar{z-index:10;background:linear-gradient(#021412b8,#0000);align-items:center;gap:12px;padding:16px 24px;display:flex;position:fixed;top:0;left:0;right:0}.boot .brand-mark{background:#2dd4bf;border-radius:999px;width:10px;height:10px;box-shadow:0 0 12px #2dd4bf61}.boot .brand-name{letter-spacing:.12em;color:#6fe3d0;font-family:Noto Serif SC,Source Han Serif SC,STSong,serif;font-size:18px;font-weight:700}.boot .brand-sub{color:#8ca09b;letter-spacing:.08em;font-size:12px}.boot .panel{justify-content:flex-start;align-items:center;min-height:100svh;padding:40px 24px;display:flex}.boot .hero-inner{max-width:760px}.boot .hero-title{color:#6fe3d0;letter-spacing:.28em;margin:0;font-family:Noto Serif SC,Source Han Serif SC,STSong,serif;font-size:26px;font-weight:800;line-height:1.25}.boot .hero-line{background:linear-gradient(90deg,#0d9488,#2dd4bf,#5eead4);border-radius:999px;width:72px;height:3px;margin:20px 0;display:block}.boot .hero-title em{color:#e4ebe9;font-size:clamp(38px,6.4vw,76px);font-style:normal;display:block}.boot .hero-body{color:#8ca09b;letter-spacing:.1em;margin:24px 0 8px;font-size:18px}.boot .hero-loop{color:#5eead4;letter-spacing:.04em;margin:0;font-family:JetBrains Mono,Cascadia Code,Consolas,monospace;font-size:13px}.boot .scroll-hint{z-index:5;color:#8ca09b;letter-spacing:.24em;pointer-events:none;flex-direction:column;align-items:center;gap:8px;font-size:12px;display:flex;position:fixed;bottom:24px;left:50%;transform:translate(-50%)}.boot .scroll-hint-wheel{border:1px solid #2a4f47;border-radius:999px;justify-content:center;width:20px;height:32px;padding-top:5px;display:flex}.boot .scroll-hint-dot{background:#2dd4bf;border-radius:999px;width:3px;height:7px;animation:1.6s cubic-bezier(.22,.61,.36,1) infinite hint-drop}@keyframes hint-drop{0%{opacity:1;transform:translateY(0)}70%{opacity:0;transform:translateY(10px)}to{opacity:0;transform:translateY(0)}}@media (width<=640px){.boot .brand-sub{display:none}.boot .panel{align-items:flex-end;padding:32px 16px}}@media (prefers-reduced-motion:reduce){.boot .scroll-hint-dot{animation:none}}</style>
+    <script type="module" crossorigin src="./assets/index-7fMUQduO.js"></script>
+    <link rel="modulepreload" crossorigin href="./assets/vendor-react-HzCsVASz.js">
+    <link rel="stylesheet" crossorigin href="./assets/index-JXCSBQ1K.css">
+  </head>
+  <body>
+    <!-- 静态首帧：与 React 首屏（Hero + 顶栏 + 滚动提示）同构同值，React 挂载后由 App 移除本节点 -->
+    <div id="boot-frame" class="boot">
+      <header class="topbar">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <span class="brand-name">智电轻擎</span>
+        <span class="brand-sub">全行业多门店轻量化 AI 管理平台</span>
+      </header>
+      <main class="panel">
+        <div class="hero-inner">
+          <h1 class="hero-title">
+            智电轻擎
+            <span class="hero-line"></span>
+            <em>让每一家小店，都有经营大脑</em>
+          </h1>
+          <p class="hero-body">全行业多门店轻量化 AI 管理平台</p>
+          <p class="hero-loop">多店发现异常 → 单店 AI 诊断 → 责任任务闭环 → 效果回看</p>
+        </div>
+      </main>
+      <div class="scroll-hint" aria-hidden="true">
+        <span class="scroll-hint-text">向下滚动 · 驱动镜头</span>
+        <span class="scroll-hint-wheel"><span class="scroll-hint-dot"></span></span>
+      </div>
+    </div>
+
+    <!-- 无 JS 兜底：隐藏首帧（它只有第一屏），改用完整的静态图文入口 -->
+    <noscript>
+      <style>#boot-frame{display:none}</style>
+      <div class="boot">
+        <header class="topbar">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span class="brand-name">智电轻擎</span>
+          <span class="brand-sub">全行业多门店轻量化 AI 管理平台</span>
+        </header>
+        <main class="panel">
+          <div class="hero-inner">
+            <h1 class="hero-title">
+              智电轻擎
+              <span class="hero-line"></span>
+              <em>让每一家小店，都有经营大脑</em>
+            </h1>
+            <p class="hero-loop">多店发现异常 → 单店 AI 诊断 → 责任任务闭环 → 效果回看</p>
+            <p class="hero-body">
+              本页为滚轮驱动的 3D 产品叙事演示，需启用 JavaScript 才能逐幕推进。
+            </p>
+            <p class="hero-body">
+              静态图文入口：
+              <a href="https://lxh123.pythonanywhere.com/portal">产品首页</a> ·
+              <a href="https://lxh123.pythonanywhere.com/demo">免登录只读演示</a>
+            </p>
+          </div>
+        </main>
+      </div>
+    </noscript>
+
+    <div id="root"></div>
+  </body>
+</html>

@@ -1,0 +1,16 @@
+{
+  "_purpose": "第三方前端 bundle 的供应链台账（第 18 轮 H32）。门禁第 27 项逐条校验：文件必须存在、大小与 SHA256 必须与实盘一致、条目文件名必须真在 src 下（防\"排除过滤器指向不存在的文件\"）",
+  "assets": [
+    {
+      "path": "src/static/js/echarts.custom.js",
+      "size_bytes": 618956,
+      "sha256": "9783385d1eaf2d311bd50b2d99555ddf0413a39256b84e8aed5121a5bf1640af",
+      "upstream": "Apache ECharts",
+      "version": "5.6.1（产物内 var RD=\"5.6.1\"；同文件另有 zrender 版本串 5.6.0，故构建期依赖版本一并记在此）",
+      "upstream_license": "Apache-2.0",
+      "how_built": "tools/echarts-build/build.mjs + entry.js（实测该目录无 package.json、无 lockfile ⇒ 构建依赖版本不可追溯，已登记为 07 的 M52 附带项）",
+      "blind_review_exclude": true,
+      "note": "619KB 压缩产物；门禁第 5 项盲审与第 12 项体积预算都覆盖它，改它必须同步改本条 sha256"
+    }
+  ]
+}

@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% import "_icons.html" as icons %}
+{% block title %}填报历史 · 门店管理助手{% endblock %}
+{% block body_class %}h5-page{% endblock %}
+{% block content %}
+<div class="page-header">
+    <a href="{{ url_for('h5.dashboard') }}" class="btn-back">← 返回工作台</a>
+    <h2>填报历史</h2>
+</div>
+
+{% if pagination.items %}
+<div class="record-list">
+    {% for r in pagination.items %}
+    <div class="record-item">
+        <div class="record-header">
+            <span class="product-name">{{ r.product_name }}</span>
+            <span class="badge badge-secondary">{{ r.record_date.strftime('%m-%d') }}</span>
+        </div>
+        <div class="record-detail">销量 {{ r.product_sales_qty }} {{ labels.unit }} · 营收 ¥{{ r.total_revenue }}</div>
+        {% if r.abnormal_notes %}<div class="record-note">{{ icons.alert(14) }} {{ r.abnormal_notes }}</div>{% endif %}
+    </div>
+    {% endfor %}
+</div>
+
+<div class="pagination">
+    {% if pagination.has_prev %}
+    <a href="{{ url_for('h5.history', page=pagination.prev_num) }}" class="btn btn-outline btn-sm">上一页</a>
+    {% endif %}
+    <span class="page-info">第 {{ pagination.page }} / {{ pagination.pages }} 页</span>
+    {% if pagination.has_next %}
+    <a href="{{ url_for('h5.history', page=pagination.next_num) }}" class="btn btn-outline btn-sm">下一页</a>
+    {% endif %}
+</div>
+{% else %}
+<div class="empty-state">
+    <span class="empty-icon">{{ icons.history(44) }}</span>
+    <p>暂无填报记录。</p>
+</div>
+{% endif %}
+
+<div class="nav-links">
+    <a href="{{ url_for('h5.dashboard') }}" class="home-card"><span class="home-card-icon">{{ icons.home(30) }}</span><span class="home-card-text"><strong>返回工作台</strong></span></a>
+</div>
+{% endblock %}

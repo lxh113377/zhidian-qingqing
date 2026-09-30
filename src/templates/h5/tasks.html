@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}我的任务 · 门店管理助手{% endblock %}
+{% block body_class %}is-staff{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h2>我的任务</h2>
+    <span class="chip">共 {{ tasks|length }} 项</span>
+</div>
+
+<div class="list-rows">
+    {% for row in tasks %}
+    <article class="record-item{{ ' task-overdue' if row.overdue else '' }}">
+        <div class="record-main">
+            <strong>{{ row.task.title }}</strong>
+            <small class="text-muted">{{ row.store_name }} · 截止 {{ row.task.due_date.isoformat() }}</small>
+            {% if row.task.detail %}<p>{{ row.task.detail }}</p>{% endif %}
+        </div>
+        <div class="task-actions">
+            <span class="badge badge-{{ 'danger' if row.overdue else 'neutral' }}">{{ '已逾期' if row.overdue else row.status_label }}</span>
+            {% if row.task.status == 'pending' %}
+            <form method="POST" action="{{ url_for('h5.task_status', task_id=row.task.id) }}" class="inline-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="status" value="in_progress">
+                <button class="btn btn-outline btn-sm" type="submit">开始</button>
+            </form>
+            {% elif row.task.status == 'in_progress' %}
+            <form method="POST" action="{{ url_for('h5.task_status', task_id=row.task.id) }}" class="inline-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="status" value="done">
+                <button class="btn btn-primary btn-sm" type="submit">完成</button>
+            </form>
+            {% endif %}
+        </div>
+    </article>
+    {% else %}
+    <p class="text-muted">当前没有分配给你的任务。</p>
+    {% endfor %}
+</div>
+{% endblock %}

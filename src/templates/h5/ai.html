@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% import "_icons.html" as icons %}
+{% block title %}AI 培训考核 · 门店管理助手{% endblock %}
+{% block body_class %}h5-page{% endblock %}
+{% block content %}
+<div class="page-header">
+    <a href="{{ url_for('h5.dashboard') }}" class="btn-back">← 返回工作台</a>
+    <h2>AI 培训考核</h2>
+</div>
+<p class="login-subtitle">AI 陪练，帮你快速上手门店业务</p>
+
+<div class="mode-grid">
+    <a href="{{ url_for('ai.quiz') }}" class="mode-card">
+        <span class="mode-icon">{{ icons.quiz(30) }}</span>
+        <span class="mode-text"><strong>问答考核</strong><small>AI 出题 → 你作答 → 即时点评</small></span>
+    </a>
+    <a href="{{ url_for('ai.chat') }}" class="mode-card">
+        <span class="mode-icon">{{ icons.chat(30) }}</span>
+        <span class="mode-text"><strong>情景模拟对话</strong><small>AI 扮顾客，演练砍价/卫生/服务</small></span>
+    </a>
+    <a href="{{ url_for('h5.training') }}" class="mode-card">
+        <span class="mode-icon">{{ icons.progress(30) }}</span>
+        <span class="mode-text"><strong>我的培训进度</strong><small>查看通过率与薄弱点</small></span>
+    </a>
+    <a href="{{ url_for('ai.trainer') }}" class="mode-card">
+        <span class="mode-icon">{{ icons.help(30) }}</span>
+        <span class="mode-text"><strong>AI 培训助手</strong><small>问业务问题，结合你的错题给建议</small></span>
+    </a>
+</div>
+{% endblock %}

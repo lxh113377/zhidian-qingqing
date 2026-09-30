@@ -1,0 +1,33 @@
+name: 问题反馈
+description: 报告一个可复现的功能问题（H5 填报 / 看板 / AI 培训 / 配置后台）
+labels: ["bug"]
+body:
+  - type: markdown
+    value: |
+      请先跑一次本地验证链并带上结论：`python verify_local.py`（或 `python quality_gate.py --fast`）。
+      涉及商家数据时**一律用演示租户数据复现**，不要粘贴真实经营数据。
+  - type: input
+    id: affected
+    attributes:
+      label: 受影响页面或接口
+      description: 例如 /h5/submit、/admin/dashboard、/api/v1/...
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤
+      description: 账号角色（老板/店长/店员）+ 门店 + 激活行业包 必须写清，否则无法定位租户隔离类问题
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期望结果与实际结果
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: 应用版本
+      description: 取 GET /healthz 的 version.app（第 17 轮 H28 起对外可见）

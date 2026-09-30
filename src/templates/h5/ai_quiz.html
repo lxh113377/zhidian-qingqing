@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% import "_icons.html" as icons %}
+{% block title %}AI 问答考核 · 门店管理助手{% endblock %}
+{% block body_class %}h5-page{% endblock %}
+{% block content %}
+<div class="page-header">
+    <a href="{{ url_for('ai.hub') }}" class="btn-back">← 返回 AI 培训</a>
+    <h2>问答考核</h2>
+</div>
+
+{% if mode == 'ask' %}
+    <div class="q-progress">第 {{ idx }} / {{ total }} 题 · 来源：{{ '大模型' if source=='dify' else '规则库' }}</div>
+    <div class="q-bar"><div class="q-bar-fill" style="--pct: {{ (idx / total * 100)|round }}%"></div></div>
+    <div class="q-box">
+        <div class="question">{{ question }}</div>
+        <form method="POST" action="{{ url_for('ai.quiz') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="form-group">
+                <textarea name="answer" class="form-control" rows="4" placeholder="在此输入你的作答…" required></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary btn-block">提交作答</button>
+        </form>
+    </div>
+
+{% elif mode == 'feedback' %}
+    <div class="q-progress">第 {{ idx }} / {{ total }} 题 · 点评</div>
+    <div class="feedback-card {{ 'ok' if grade.is_correct else 'no' }}">
+        <p class="q-title">{{ question }}</p>
+        <p><strong>得分：{{ grade.score }}/100</strong></p>
+        <p>{{ grade.feedback }}</p>
+        {% if grade.details %}
+        <div class="kw-tags">
+            {% for w in grade.details.get('hit_elements', []) %}
+            <span class="kw-chip kw-chip-hit">{{ icons.result(14) }} {{ w }}</span>
+            {% endfor %}
+            {% for w in grade.details.get('miss_elements', []) %}
+            <span class="kw-chip kw-chip-miss">{{ icons.fail(14) }} {{ w }}</span>
+            {% endfor %}
+            {% if grade.details.get('num_ok') %}
+            <span class="kw-chip kw-chip-num"># 关键数值已答出</span>
+            {% endif %}
+        </div>
+        {% endif %}
+        <div class="ref">{{ icons.bulb(16) }} 参考答案：{{ reference }}</div>
+    </div>
+    {% if has_next %}
+    <a href="{{ url_for('ai.quiz') }}" class="btn btn-primary btn-block">下一题 →</a>
+    {% else %}
+    <a href="{{ url_for('ai.quiz') }}" class="btn btn-primary btn-block">查看考核结果 →</a>
+    {% endif %}
+
+{% elif mode == 'result' %}
+    <div class="verdict-card {{ 'pass' if verdict.pass else 'fail' }}">
+        <div class="big">{{ icons.result(26) if verdict.pass else icons.fail(26) }} {{ '合格' if verdict.pass else '不合格' }}</div>
+        <div class="summary">{{ verdict.summary }}</div>
+    </div>
+    {% if verdict.suggestion %}
+    <div class="section">
+        <h3>AI 补训计划</h3>
+        <div class="record-list">
+            {% for tip in verdict.suggestion %}
+            <div class="record-item">
+                <span class="record-detail">{{ icons.bulb(14) }} {{ tip }}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+    {% if quiz_topic %}
+    <a href="{{ url_for('ai.quiz', restart='1', topic=quiz_topic) }}" class="btn btn-primary btn-block">
+        继续补弱项：{{ quiz_topic }} 再来一组
+    </a>
+    {% elif verdict.weak %}
+    <a href="{{ url_for('ai.quiz', restart='1', topic=verdict.weak[0]) }}" class="btn btn-outline btn-block">
+        针对薄弱点「{{ verdict.weak[0] }}」再来一组
+    </a>
+    {% endif %}
+    {% if records %}
+    <div class="section">
+        <h3>本次作答回顾</h3>
+        <div class="record-list">
+            {% for r in records %}
+            <div class="record-item">
+                <div class="record-header">
+                    <span class="product-name">{{ r.question }}</span>
+                    <span class="badge badge-{{ 'success' if r.is_correct else 'danger' }}">{{ r.score }}分</span>
+                </div>
+                <div class="record-detail">你的作答：{{ r.answer }}</div>
+                <div class="record-note">点评：{{ r.feedback }}</div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+    <a href="{{ url_for('ai.quiz', restart='1') }}" class="btn btn-outline btn-block">重新考核</a>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+// 作答反馈后自动聚焦下一步按钮，减少连续出题的操作成本
+(function () {
+    var btn = document.querySelector('.feedback-card ~ a.btn-block, .verdict-card ~ a.btn-block');
+    if (btn) btn.focus();
+})();
+</script>
+{% endblock %}

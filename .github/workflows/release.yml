@@ -1,0 +1,117 @@
+name: Release
+
+# 第 17 轮 M44（对标 Appwrite「Published versions are immutable — ship a new patch
+# instead of re-tagging」+ Metabase release-log.yml + ToolJet release-automation.yml）：
+# tag push → 版本契约校验 → 静态门禁 → 打权威源码 ZIP → 建 GitHub Release。
+#
+# ⚠️ 诚实声明（写就即生效，勿当已验证）：本仓库当前的 GitHub Actions 作业拿不到 runner
+# （账号额度/付款被拦，在册 M42），所以**本文件没有任何一次真实运行回执**。
+# 它的等价性目前只由本地 `python verify_local.py`（H26 入口，含版本 git 腿）保证。
+# 额度恢复后第一件事：push 一个 tag 复跑本文件，并把 run 号补进 memory/07-next-steps.md。
+#
+# 为什么把"已存在的 Release 直接判失败"而不是"覆盖更新"：
+# 覆盖会让别人手上的旧 ZIP 与新 ZIP 同名不同内容，等于把发布历史变成可改写账本。
+
+on:
+  push:
+    tags: ['v[0-9]*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: '要发布的 tag（必须已 push 到远端，如 v1.6.1）'
+        required: true
+        type: string
+
+concurrency:
+  group: ican-release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      PYTHONIOENCODING: utf-8
+      # 仅用于让 Flask 起得来：CI 不接任何真实 AI/线上资源，密钥一律不给
+      SECRET_KEY: ci-release-check-only-not-a-real-secret
+      ICAN_ALLOW_WEAK_SECRET: '1'
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4；升级=显式改这行（防上游 tag 移动悄悄改 CI 行为）
+        with:
+          fetch-depth: 1
+
+      - name: 解析发布版本
+        id: ver
+        run: |
+          TAG="${{ inputs.tag || github.ref_name }}"
+          case "$TAG" in
+            v[0-9]*) echo "tag=$TAG" >> "$GITHUB_OUTPUT"; echo "📌 发布 $TAG" ;;
+            *) echo "❌ 非法 tag：$TAG（需形如 v1.6.1）"; exit 1 ;;
+          esac
+
+      - name: 安装 Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5；升级=显式改这行（防上游 tag 移动悄悄改 CI 行为）
+        with:
+          python-version-file: .python-version
+          cache: pip
+
+      - name: 安装依赖
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r iCAN大学生创新创业大赛/requirements.txt
+          pip install "ruff==0.16.5"  # 钉版：与本仓全局实测同版本，防"本地绿 CI 红"的尺子漂移
+
+      - name: 版本契约校验（tag ⇄ src/version.py 同源，绝不在代码里猜 git）
+        env:
+          RELEASE_TAG: ${{ steps.ver.outputs.tag }}
+        run: |
+          python - <<'PY'
+          import os, re, sys
+          tag = os.environ['RELEASE_TAG'].lstrip('v')
+          with open('iCAN大学生创新创业大赛/src/version.py', encoding='utf-8') as fh:
+              m = re.search(r"^APP_VERSION\s*=\s*['\"]([^'\"]+)['\"]", fh.read(), re.M)
+          code = m.group(1) if m else '(读不到 APP_VERSION)'
+          if code != tag:
+              print(f'❌ tag v{tag} 与代码里的 APP_VERSION v{code} 不一致 —— 拒发')
+              print('   正解：改 src/version.py 后重新打 tag；已发布的 tag 不许挪（版本不可变）')
+              sys.exit(1)
+          print(f'✅ 版本契约一致：v{tag}')
+          PY
+
+      - name: 重建演示库（CI 无 ican.db，按种子重建后再跑门禁）
+        run: python init_db.py --if-empty
+        working-directory: iCAN大学生创新创业大赛
+
+      - name: 发布前静态门禁（权威副本目录，全量测试由 quality-gate.yml 负责）
+        run: python quality_gate.py --fast
+        working-directory: 交付物/提交包/工程佐证材料/05-源代码全文
+
+      - name: 打包权威源码 ZIP
+        env:
+          TAG: ${{ steps.ver.outputs.tag }}
+        run: |
+          mkdir -p dist
+          cd 交付物/提交包/工程佐证材料
+          # 与同级 09-发布校验/ 一起打包：解压后门禁第 29 项要能在 <副本>/../09-发布校验
+          # 找到台账（否则冷启动复现必然"台账缺失"红），评委也才拿得到可复算的校验和。
+          zip -rq "$GITHUB_WORKSPACE/dist/iCAN-源代码-${TAG}.zip" 05-源代码全文 09-发布校验 \
+            -x "*/data/*" "*/.venv*" "*/__pycache__/*" "*/.pytest_cache/*"
+          cd "$GITHUB_WORKSPACE"
+          unzip -l "dist/iCAN-源代码-${TAG}.zip" | tail -3
+
+      - name: 建 GitHub Release（同版本已存在则拒，不覆盖既有产物）
+        env:
+          TAG: ${{ steps.ver.outputs.tag }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "❌ $TAG 的 Release 已存在 —— 已发布版本不可变，请发新 patch 号"
+            exit 1
+          fi
+          gh release create "$TAG" "dist/iCAN-源代码-${TAG}.zip" \
+            --title "智电轻擎 $TAG" \
+            --notes "源码 ZIP（权威交付副本 05-源代码全文）。升级说明见仓库根 UPGRADE.md：
+          存量库执行 \`python init_db.py --if-empty\`，迁移进度可查 \`GET /healthz\` 的 schema 段。"

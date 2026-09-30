@@ -1,0 +1,29 @@
+{
+  "manifest_format": 1,
+  "pack_id": "beauty",
+  "pack_version": "1.0.0",
+  "schema_min": 1,
+  "schema_max": 1,
+  "requires": [
+    "custom_terms",
+    "dashboard_labels",
+    "decision_cockpit",
+    "free_metrics",
+    "multi_store",
+    "negotiation",
+    "pack_products",
+    "pack_scoped_unique"
+  ],
+  "vendor": "builtin",
+  "exported_at": "None",
+  "integrity": {
+    "knowledge/会员与业绩.md": "sha256:227d6023856b0dc32f2a9b596683e2d9fb44da79442b1f1f637189b1366b4d7f",
+    "knowledge/卫生与消毒.md": "sha256:2cd3d20beafeec338d40c6ab6d57d2fe0c6d896b45853ac9f1a34bd76b749542",
+    "knowledge/安全与过敏.md": "sha256:436c37458090329f3daacc1bf45373e69ca86cb94a9bb783a22576522248cb5c",
+    "knowledge/服务流程.md": "sha256:a4ab57b943119c3831b9c613dd9e245367ed373a9acdbe78cbcb935d87907e56",
+    "pack.json": "sha256:a8672dbad308c9eacf28b295493c10f7677ae3d8dda77c82156c514851cd6e30",
+    "products.json": "sha256:150f8d0e6e4142b7e869622a8ea214474d605def6e721479013088c443e950c1",
+    "questions.json": "sha256:5e35934287ae5f3f78279497268a3914b35c6b16c87657bd989c2032f56ec549",
+    "scenarios.json": "sha256:b7c1196b0d4f57ea33925896736b5a47e57481e245555c13eebdc6c0b1c685da"
+  }
+}

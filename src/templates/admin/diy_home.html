@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}全行业建包工作台 · 门店管理助手{% endblock %}
+{% block body_class %}is-admin{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h2>全行业建包工作台</h2>
+    <span class="chip">AI 只生成草稿 · 人工确认后才落库</span>
+</div>
+
+<section class="panel">
+    <h3>第一步：填写行业信息</h3>
+    <p class="text-muted">今日 AI 造包用量 {{ quota.used }}/{{ quota.limit }} 次，Token {{ quota.tokens }}/{{ quota.token_limit }}。
+        {% if not llm_ready %}当前未接入在线 AI，将直接使用规则模板草稿。{% endif %}</p>
+    <form method="POST" action="{{ url_for('diy.diy_draft') }}" class="stack-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        {% for s in steps %}
+        <div class="form-group">
+            <label for="f-{{ s.key }}">{{ s.label }}{{ ' *' if s.required else '' }}</label>
+            <input type="text" id="f-{{ s.key }}" name="{{ s.key }}" class="form-control"
+                   maxlength="{{ s.max_len }}" placeholder="{{ s.hint }}"
+                   {% if s.required %}required{% endif %}>
+        </div>
+        {% endfor %}
+        <button type="submit" class="btn btn-primary">生成草稿（预览后确认）</button>
+    </form>
+</section>
+
+<section class="panel">
+    <h3>导入 / 导出 / 复制 / 恢复</h3>
+    <form method="GET" action="{{ url_for('diy.diy_import_page') }}" class="inline-form">
+        <button type="submit" class="btn btn-outline btn-sm">导入包 JSON</button>
+    </form>
+    <form method="POST" action="{{ url_for('diy.diy_copy') }}" class="inline-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <select name="src_id" class="form-control" aria-label="来源包">
+            {% for p in packs %}<option value="{{ p.id }}">{{ p.name }}</option>{% endfor %}
+        </select>
+        <input type="text" name="new_id" class="form-control" required maxlength="50"
+               placeholder="新包标识（小写字母开头）">
+        <input type="text" name="name" class="form-control" maxlength="50" placeholder="新包名称（选填）">
+        <button type="submit" class="btn btn-outline btn-sm">复制为新包</button>
+    </form>
+    <div class="list-rows">
+        {% for p in packs %}
+        <div class="list-row">
+            <span>{{ p.name }}<small class="text-muted">（{{ p.id }} · {{ p.domain_count }} 域）</small></span>
+            <span class="row-actions">
+                <a class="btn btn-outline btn-sm" href="{{ url_for('diy.diy_export', pack_id=p.id) }}">导出</a>
+                <form method="POST" action="{{ url_for('diy.diy_restore', pack_id=p.id) }}" class="inline-form">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-outline btn-sm">恢复内置</button>
+                </form>
+                <a class="btn btn-outline btn-sm" href="{{ url_for('industry.pack_detail', pack_id=p.id) }}">编辑</a>
+            </span>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+{% endblock %}

@@ -1,0 +1,185 @@
+{% extends "base.html" %}
+{% import "_icons.html" as icons %}
+{% import "admin/_agent_trace.html" as trace_t %}
+{% block title %}AI 经营分析 · 门店管理助手{% endblock %}
+{% block body_class %}is-admin{% endblock %}
+{% block content %}
+<div class="page-header has-actions">
+    <a href="{{ url_for('admin.dashboard') }}" class="btn-back">← 返回看板</a>
+    <h2>AI 经营分析</h2>
+    <a href="{{ url_for('ai.assistant') }}" class="btn btn-outline btn-sm">AI 智能助手</a>
+</div>
+
+<p class="login-subtitle">
+    基于真实经营数据自动生成综合分析报告，
+    {% if analysis.source == 'dify' %}<span class="badge badge-success">大模型生成</span>
+    {% elif analysis.source == 'rule' %}<span class="badge badge-warning">规则版演示</span>
+    {% else %}<span class="badge badge-danger">{{ degraded_badge }}</span>{% endif %}
+    <small class="text-muted">仅供参考，最终经营决策请由店主判断</small>
+</p>
+
+{% if analysis.source == 'dify-error' %}
+<div class="feedback-card no">
+    <p>{{ icons.alert(16) }} {{ analysis.content }}</p>
+</div>
+{% endif %}
+
+{% if stats.has_data %}
+<div class="stat-cards">
+    <div class="stat-card"><div class="stat-num">¥{{ stats.kpi.total_revenue }}</div><div class="stat-label">总营收</div></div>
+    <div class="stat-card"><div class="stat-num">{{ stats.kpi.total_qty }}</div><div class="stat-label">总销量({{ labels.unit }})</div></div>
+    <div class="stat-card"><div class="stat-num">¥{{ stats.kpi.avg_daily_revenue }}</div><div class="stat-label">日均营收</div></div>
+    <div class="stat-card"><div class="stat-num">¥{{ stats.kpi.avg_per_unit }}</div><div class="stat-label">单均营收</div></div>
+</div>
+{% endif %}
+
+{# AI 洞察卡：周期对比 / 销量预测 / 工作日周末规律（数据充足时叠加展示） #}
+{% if stats.has_data %}
+<div class="ai-insights">
+    {% if stats.compare.ok %}
+    <div class="insight-card">
+        <h4>周期对比（近 7 日 vs 前 7 日）</h4>
+        {% if stats.compare.qty_pct is not none %}
+        <span class="trend-badge {{ 'up' if stats.compare.qty_pct >= 0 else 'down' }}">
+            {{ '↑' if stats.compare.qty_pct >= 0 else '↓' }} 销量 {{ stats.compare.qty_pct|abs }}%
+        </span>
+        {% endif %}
+        {% if stats.compare.revenue_pct is not none %}
+        <span class="trend-badge {{ 'up' if stats.compare.revenue_pct >= 0 else 'down' }}">
+            {{ '↑' if stats.compare.revenue_pct >= 0 else '↓' }} 营收 {{ stats.compare.revenue_pct|abs }}%
+        </span>
+        {% endif %}
+    </div>
+    {% endif %}
+    {% if stats.forecast.ok %}
+    <div class="insight-card">
+        <h4>销量预测</h4>
+        <div class="prediction">明日约 <strong>{{ stats.forecast.qty }}</strong> {{ labels.unit }}
+            {% if stats.forecast.revenue %} · 营收 ≈ ¥{{ stats.forecast.revenue|int }}{% endif %}
+        </div>
+    </div>
+    {% endif %}
+    {% if stats.weekday.ok %}
+    <div class="insight-card">
+        <h4>工作日 / 周末规律</h4>
+        <div class="prediction">工作日日均 {{ stats.weekday.weekday_avg }} {{ labels.unit }} · 周末日均 {{ stats.weekday.weekend_avg }} {{ labels.unit }}</div>
+    </div>
+    {% endif %}
+    {% if stats.anomalies.ok %}
+    <div class="insight-card">
+        <h4>AI 异常识别</h4>
+        {% set last = stats.anomalies.points[-1] %}
+        <div class="prediction">
+            检出 <strong>{{ stats.anomalies.points|length }}</strong> 个异常日，
+            最新 {{ last.date }}（{{ last.metric }}偏离 {{ last.deviation_pct }}%）
+        </div>
+        <div class="record-note neutral">判据：z-score（|z|≥2）+ IQR 双检测</div>
+    </div>
+    {% endif %}
+    {% if stats.replenishment.ok %}
+    <div class="insight-card">
+        <h4>AI 备货建议（安全库存）</h4>
+        {% for it in stats.replenishment['items'][:3] %}
+        <div class="prediction">{{ it.product }}：补 <strong>{{ it.suggest }}</strong> {{ labels.unit }}</div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% if stats.basket.ok %}
+    <div class="insight-card">
+        <h4>AI 组合推荐（购物篮）</h4>
+        <div class="prediction">
+            「{{ stats.basket.pairs[0].a }}」+「{{ stats.basket.pairs[0].b }}」
+            提升度 <strong>{{ stats.basket.pairs[0].lift }}</strong>
+        </div>
+        <div class="record-note neutral">建议搭售或相邻陈列，小范围试点验证</div>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+{# AI 可解释性（第四轮 D3）：每条结论附置信度与数据依据 #}
+{% if analysis.evidence %}
+<div class="section">
+    <h3>{{ icons.ai(18) }} AI 结论置信度与依据</h3>
+    <p class="text-muted trainer-hint">
+        共 {{ analysis.confidence.count }} 条结论，平均置信度
+        <strong>{{ (analysis.confidence.avg*100)|round|int }}%（{{ analysis.confidence.level }}）</strong>
+        <small> · 置信度由样本量与数据充分度推导，样本越少越保守</small>
+    </p>
+    {% for item in analysis.evidence %}
+    <div class="evidence-card">
+        <div class="record-header">
+            <span class="product-name">{{ item.kind }}</span>
+            <span class="badge badge-{{ 'success' if item.confidence>=0.8 else ('warning' if item.confidence>=0.6 else 'danger') }}">
+                置信度 {{ (item.confidence*100)|round|int }}%（{{ item.level }}）
+            </span>
+        </div>
+        <div class="confidence-bar"><span class="confidence-fill" style="--pct: {{ (item.confidence*100)|round|int }}%"></span></div>
+        <p>{{ item.claim }}</p>
+        <ul class="evidence-list">
+            {% for e in item.evidence %}<li>{{ e }}</li>{% endfor %}
+        </ul>
+        {% if item.caveat %}<div class="record-note neutral">局限：{{ item.caveat }}</div>{% endif %}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+{# AI 分析内容（规则版结构化 / Dify 版生成文本统一展示，纯文本输出不启用 safe 过滤） #}
+<div class="section">
+    <h3>{{ icons.ai(18) }} 分析结论</h3>
+    {% if analysis.source == 'rule' %}
+        {% set paras = analysis.content.split('\n') %}
+        {% if paras|length > 1 and '【' in paras[0] %}
+            {% for line in paras %}
+                {% if line.startswith('【') %}
+                    <h4 class="analysis-sec">{{ line }}</h4>
+                {% elif line.strip() %}
+                    <p>{{ line }}</p>
+                {% endif %}
+            {% endfor %}
+        {% else %}
+            <p>{{ analysis.content }}</p>
+        {% endif %}
+    {% elif analysis.source == 'dify' %}
+        {% for line in analysis.content.split('\n') %}
+            {% if line.strip() %}<p>{{ line }}</p>{% endif %}
+        {% endfor %}
+    {% endif %}
+    <p class="note">生成时间：{{ analysis.generated_at }}（{{ '大模型' if analysis.source=='dify' else '规则版·演示' }}）</p>
+</div>
+
+{# AI 决策轨迹（P6）：本轮分析真实走了哪些工具、拿到什么证据、耗时多少 #}
+{{ trace_t.timeline(trace) }}
+
+{% if stats.waste_alerts %}
+{# 长列表密度治理（V4）：>5 条默认折叠（与看板同一机制），无 JS 由 noscript 兜底全量 #}
+<div class="section">
+    <h3>{{ icons.alert(18) }} {{ labels.waste }}预警（{{ stats.waste_alert_total or stats.waste_alerts|length }}）</h3>
+    <div class="record-list{{ ' is-collapsed' if stats.waste_alerts|length > 5 }}" id="bizWasteList" data-collapse-list>
+        {% for a in stats.waste_alerts %}
+        <div class="record-item">
+            <div class="record-header">
+                <span class="product-name">{{ a.product }}</span>
+                <span class="badge badge-danger">{{ a.date }}</span>
+            </div>
+            <div class="record-note">{{ a.note }}</div>
+            {% if a.cause_label %}
+            <div class="record-note neutral">AI 归因（仅供参考）：{{ a.cause_label }}{% if a.confidence %} · 置信度{{ a.confidence }}{% endif %} — {{ a.advice }}</div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% if stats.waste_alerts|length > 5 %}
+    <button type="button" class="btn btn-outline btn-sm btn-block list-toggle" hidden
+            data-collapse-toggle="bizWasteList" aria-controls="bizWasteList" aria-expanded="false"
+            data-label-more="展开全部 {{ stats.waste_alerts|length }} 条"
+            data-label-less="收起（只看最新 5 条）">展开全部 {{ stats.waste_alerts|length }} 条</button>
+    {% endif %}
+</div>
+{% endif %}
+
+<div class="section">
+    <a href="{{ url_for('ai.assistant') }}" class="btn btn-primary btn-block">向 AI 助手提问经营问题 →</a>
+</div>
+{% endblock %}

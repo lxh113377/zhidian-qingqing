@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% import "_icons.html" as icons %}
+{% block title %}登录 · 门店管理助手{% endblock %}
+{% block nav %}{% endblock %}
+{% set role = request.args.get('role', 'staff') %}
+{% block content %}
+<div class="login-page">
+    <div class="login-card">
+        <span class="brand-logo brand-hero" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 10h9v6a3.5 3.5 0 0 1-3.5 3.5H9.5A3.5 3.5 0 0 1 6 16v-6z"/><path d="M15 11h1.5a2 2 0 0 1 0 4H15"/><path d="M8.5 4.5c-.9.8-1.4 1.6-1.4 2.6M12 3.5c-.9.8-1.4 1.6-1.4 2.6M15.5 4.5c-.9.8-1.4 1.6-1.4 2.6" fill="none"/></svg></span>
+        <h1>门店管理助手</h1>
+        <span class="chip">只用微信 · 轻量化AI管理</span>
+        <form method="POST" action="{{ url_for('auth.login') }}" class="login-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="form-group">
+                <span class="form-label">身份</span>
+                <div class="role-seg" role="radiogroup" aria-label="登录身份">
+                    <label class="role-opt{{ ' is-active' if role == 'staff' }}">
+                        <input type="radio" name="role" value="staff" {% if role == 'staff' %}checked{% endif %}>
+                        <span class="role-opt-icon">{{ icons.staff(20) }}</span>
+                        <span class="role-opt-text"><strong>店员</strong><small>微信H5填报</small></span>
+                    </label>
+                    <label class="role-opt{{ ' is-active' if role == 'admin' }}">
+                        <input type="radio" name="role" value="admin" {% if role == 'admin' %}checked{% endif %}>
+                        <span class="role-opt-icon">{{ icons.admin(20) }}</span>
+                        <span class="role-opt-text"><strong>管理端</strong><small>平台 / 老板后台</small></span>
+                    </label>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="username">账号</label>
+                <input type="text" name="username" id="username" class="form-control" required placeholder="管理员或店员账号" autocomplete="username">
+            </div>
+            <div class="form-group">
+                <label for="password">密码</label>
+                <input type="password" name="password" id="password" class="form-control" required placeholder="请输入密码" autocomplete="current-password">
+            </div>
+            <button type="submit" class="btn btn-primary btn-block">登 录</button>
+        </form>
+        <div class="login-hint">
+            <p>演示账号：</p>
+            <p>平台 <code>platform_demo / platform123</code></p>
+            <p>老板 <code>owner_demo / owner123</code></p>
+            <p>店员 <code>milk_tea_staff1 / staff123</code></p>
+            <p class="mt-6 text-muted">只用微信H5访问，无需安装任何APP。</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+// 登录身份分段：点击/键盘切单选时同步激活态视觉
+(function () {
+    var opts = document.querySelectorAll('.role-opt input[type="radio"]');
+    opts.forEach(function (r) {
+        r.addEventListener('change', function () {
+            document.querySelectorAll('.role-opt').forEach(function (o) { o.classList.remove('is-active'); });
+            if (r.checked) r.closest('.role-opt').classList.add('is-active');
+        });
+    });
+})();
+</script>
+{% endblock %}

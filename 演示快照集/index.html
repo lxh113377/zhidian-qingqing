@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>iCAN 演示快照集</title>
+<script>
+// 主题初始化（渲染前执行，防闪烁）：手动选择优先，缺省默认「墨绿黑暗主题」（雾山青暗室）
+(function () {
+    var t = null;
+    try { t = localStorage.getItem('ican-theme'); } catch (e) {}
+    if (t === 'dark' || t === 'light') { document.documentElement.dataset.theme = t; }
+    else { document.documentElement.dataset.theme = 'dark'; }
+})();
+</script>
+<style>
+  :root {
+    --bg:#F5F7F6; --card:#FFFFFF; --text:#16211F; --text-light:#5B6B67; --border:#E3E8E6;
+    --primary:#0F766E; --soft:rgba(15,118,110,.09); --shadow-sm:0 1px 2px rgba(16,33,31,.05);
+    --shadow-lg:0 12px 34px -8px rgba(16,33,31,.18);
+    color-scheme: light;
+  }
+  html[data-theme="dark"] {
+    --bg:#0A1513; --card:#12211F; --text:#E4EBE9; --text-light:#8CA09B; --border:#1E3A34;
+    --primary:#2DD4BF; --soft:rgba(45,212,191,.12); --shadow-sm:0 1px 2px rgba(0,0,0,.5);
+    --shadow-lg:0 14px 34px -8px rgba(0,0,0,.62);
+    color-scheme: dark;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family:"DIN Alternate","Bahnschrift","PingFang SC","HarmonyOS Sans SC","MiSans","Segoe UI","Microsoft YaHei",sans-serif;
+    background:var(--bg); color:var(--text); margin:0; padding:32px 24px 56px;
+    -webkit-font-smoothing:antialiased; line-height:1.65;
+    transition: background-color .2s ease, color .2s ease;
+  }
+  .wrap { max-width:960px; margin:0 auto; }
+  .head { display:flex; align-items:center; gap:10px; margin:0 0 6px; }
+  .mark {
+    display:inline-flex; align-items:center; justify-content:center;
+    width:32px; height:32px; border-radius:9px; flex:none;
+    background:linear-gradient(120deg,#0A4841,#0F766E 55%,#14B8A6); color:#fff;
+  }
+  h1 { font-size:22px; letter-spacing:-.01em; margin:0; }
+  .sub { color:var(--text-light); font-size:13px; margin:0 0 14px 42px; }
+  .guide {
+    margin:0 0 22px 42px; padding:10px 14px; font-size:13px; line-height:1.6;
+    color:var(--primary); background:var(--soft); border:1px solid var(--primary);
+    border-radius:12px;
+  }
+  .guide b { font-weight:650; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(248px,1fr)); gap:14px; }
+  .card {
+    background:var(--card); border:1px solid var(--border); border-radius:16px;
+    padding:16px; text-decoration:none; color:inherit;
+    transition:transform .12s cubic-bezier(.22,.61,.36,1), box-shadow .12s ease, border-color .12s ease;
+    display:block;
+  }
+  .card:hover { transform:translateY(-2px); box-shadow:var(--shadow-lg); border-color:var(--primary); }
+  .card:active { transform:scale(.98); }
+  .card:focus-visible { outline:2px solid var(--primary); outline-offset:2px; }
+  .role { display:inline-block; font-size:11px; font-weight:600; padding:2px 9px; border-radius:999px; margin-bottom:9px; }
+  .role-admin { background:var(--soft); color:var(--primary); border:1px solid var(--primary); }
+  .role-platform { background:var(--soft); color:var(--primary); border:1px solid var(--primary); }
+  .role-staff { background:var(--soft); color:var(--primary); border:1px dashed var(--primary); }
+  .role-public { background:var(--soft); color:var(--primary); border:1px solid var(--primary); }
+  .t { font-size:15px; font-weight:650; margin-bottom:6px; }
+  .d { font-size:12px; color:var(--text-light); line-height:1.55; }
+  .fab {
+    position:fixed; right:16px; bottom:16px; z-index:200;
+    width:40px; height:40px; border-radius:50%; font-size:18px; cursor:pointer;
+    display:inline-flex; align-items:center; justify-content:center;
+    background:var(--card); color:var(--text); border:1px solid var(--border);
+    box-shadow:var(--shadow-lg); transition:all .2s;
+  }
+  .fab:hover { transform:rotate(15deg) scale(1.08); }
+  /* 主题按钮线性图标：默认墨绿黑暗显示太阳（点击切亮），亮色显示月亮（点击切暗） */
+  .fab .icon-sun { display:block; }
+  .fab .icon-moon { display:none; }
+  html[data-theme="light"] .fab .icon-sun { display:none; }
+  html[data-theme="light"] .fab .icon-moon { display:block; }
+</style></head>
+<body>
+  <div class="wrap">
+    <div class="head">
+      <span class="mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><line x1="4" y1="20" x2="20" y2="20"/><line x1="7" y1="16" x2="7" y2="11"/><line x1="12" y1="16" x2="12" y2="6"/><line x1="17" y1="16" x2="17" y2="9"/></svg></span>
+      <h1>iCAN 演示快照集</h1>
+    </div>
+    <div class="sub">全行业多门店轻量化 AI 管理智能体 · 共 25 页 · 页内按钮可互跳 · 右下角按钮可切暗色（离线双击即用）</div>
+    <div class="guide" role="status"><b>推荐演示路径</b>：⓪ 只读演示入口（免登录，打开即见四角色驾驶舱）→ ① 管理员看板（KPI + 三图 + 四角色驾驶舱）→ ② AI 经营分析 / AI 助手 → ③ 责任任务与效果回看 → ④ 店员 H5 填报 → ⑤ AI 培训考核 → ⑥ 我的培训进度（数据→洞察→执行→成长闭环）</div>
+    <div class="grid">
+      <a class="card" href="01_管理员看板.html">
+        <div class="role role-admin">管理员</div>
+        <div class="t">管理员看板</div>
+        <div class="d">数据总览：KPI + 日营收销量折线 + 产品占比饼图 + 热销排行 + 损耗异常提醒</div>
+      </a>
+      <a class="card" href="02_店员管理.html">
+        <div class="role role-admin">管理员</div>
+        <div class="t">店员管理</div>
+        <div class="d">店员列表（小王/小李，状态启用），可新增/停用</div>
+      </a>
+      <a class="card" href="13_新增店员.html">
+        <div class="role role-admin">管理员</div>
+        <div class="t">新增店员</div>
+        <div class="d">店员账号创建表单（AC-OBS-01 证据页：管理员建号→店员登录）</div>
+      </a>
+      <a class="card" href="03_产品管理.html">
+        <div class="role role-admin">管理员</div>
+        <div class="t">产品管理</div>
+        <div class="d">5 个在售产品及单价，可增删</div>
+      </a>
+      <a class="card" href="04_考核查看.html">
+        <div class="role role-admin">管理员</div>
+        <div class="t">考核查看</div>
+        <div class="d">店员填报/考核记录入口</div>
+      </a>
+      <a class="card" href="05_考核结果统计.html">
+        <div class="role role-admin">管理员</div>
+        <div class="t">AI考核结果统计</div>
+        <div class="d">每人错题数 + 平均得分 + 薄弱知识点分布</div>
+      </a>
+      <a class="card" href="06_考核明细.html">
+        <div class="role role-admin">管理员</div>
+        <div class="t">AI考核明细</div>
+        <div class="d">店员(小王)逐条考核记录与对错</div>
+      </a>
+      <a class="card" href="14_经营分析.html">
+        <div class="role role-admin">管理员</div>
+        <div class="t">AI经营分析</div>
+        <div class="d"> 营收/趋势/结构/损耗 综合报告（AI 生成，规则版演示）</div>
+      </a>
+      <a class="card" href="15_AI助手.html">
+        <div class="role role-admin">管理员</div>
+        <div class="t">AI智能助手</div>
+        <div class="d"> 管理员业务问答（营收/销量/毛利/备货/知识库，多轮记忆）</div>
+      </a>
+      <a class="card" href="07_店员看板.html">
+        <div class="role role-staff">店员H5</div>
+        <div class="t">店员看板(H5)</div>
+        <div class="d">店员端数据总览，微信内打开</div>
+      </a>
+      <a class="card" href="08_填报历史.html">
+        <div class="role role-staff">店员H5</div>
+        <div class="t">填报历史(H5)</div>
+        <div class="d">本人历史填报记录，按日可追溯</div>
+      </a>
+      <a class="card" href="09_AI培训主页.html">
+        <div class="role role-staff">店员H5</div>
+        <div class="t">AI培训主页</div>
+        <div class="d">问答考核 / 情景对话 / 上岗考核 三入口</div>
+      </a>
+      <a class="card" href="10_AI问答考核.html">
+        <div class="role role-staff">店员H5</div>
+        <div class="t">AI问答考核</div>
+        <div class="d">AI出题→店员作答→AI点评（第1题示例）</div>
+      </a>
+      <a class="card" href="11_情景对话.html">
+        <div class="role role-staff">店员H5</div>
+        <div class="t">AI情景对话</div>
+        <div class="d">AI扮演顾客练习（砍价/卫生/服务场景）</div>
+      </a>
+      <a class="card" href="12_我的培训进度.html">
+        <div class="role role-staff">店员H5</div>
+        <div class="t">我的培训进度(H5)</div>
+        <div class="d">店员个人通过率+分类统计(问答/情景)+薄弱方向+错题集（AC-OBS-10/13 店员视角闭环）</div>
+      </a>
+      <a class="card" href="16_AI培训助手.html">
+        <div class="role role-staff">店员H5</div>
+        <div class="t">AI培训助手</div>
+        <div class="d">店员业务问答 + 个人错题针对性学习提示（聊天式）</div>
+      </a>
+      <a class="card" href="17_建包工作台.html">
+        <div class="role role-admin">管理员</div>
+        <div class="t">全行业建包工作台</div>
+        <div class="d">六步向导建包 → AI/模板草稿 → 预览校验 → 人工确认落库；含导入导出/复制/恢复内置</div>
+      </a>
+      <a class="card" href="18_多门店经营大脑.html">
+        <div class="role role-admin">管理员</div>
+        <div class="t">多门店经营大脑</div>
+        <div class="d">多店汇总/门店排行/跨店趋势/异常门店提示 + 跨店 AI 分析（证据引用 + 决策轨迹 + 来源标注）</div>
+      </a>
+      <a class="card" href="19_门店与成员.html">
+        <div class="role role-admin">管理员</div>
+        <div class="t">门店与成员</div>
+        <div class="d">老板建门店、邀请店长/店员、设置本店行业包（一店一当前包）</div>
+      </a>
+      <a class="card" href="20_商家注册.html">
+        <div class="role role-admin">管理员</div>
+        <div class="t">商家注册</div>
+        <div class="d">邮箱验证码自助注册入口（未配置邮服时显示关闭提示与人工开户指引）</div>
+      </a>
+      <a class="card" href="21_演示数据重建.html">
+        <div class="role role-platform">平台管理员</div>
+        <div class="t">演示数据重建</div>
+        <div class="d">平台管理员备份后全库重建七门店 30 天演示租户（双重确认 + 自动备份 + 账号清单）</div>
+      </a>
+      <a class="card" href="22_责任任务.html">
+        <div class="role role-admin">管理员</div>
+        <div class="t">责任任务</div>
+        <div class="d">多店异常转责任任务：负责人、截止时间、状态、逾期与效果回看</div>
+      </a>
+      <a class="card" href="25_变更归因.html">
+        <div class="role role-admin">管理员</div>
+        <div class="t">变更归因</div>
+        <div class="d">谁在什么时候改了哪一行的哪个字段：按实体/门店筛选的变更流水（只出字段名与前后值，不给平台业务明细）</div>
+      </a>
+      <a class="card" href="23_我的任务.html">
+        <div class="role role-staff">店员H5</div>
+        <div class="t">我的任务</div>
+        <div class="d">店员微信 H5 查看本人任务并更新开始/完成状态（无需安装 App）</div>
+      </a>
+      <a class="card" href="24_只读演示入口.html">
+        <div class="role role-public">公开入口</div>
+        <div class="t">只读演示入口</div>
+        <div class="d">免登录只读 AI 决策驾驶舱：四角色结论 / 证据目录 / 分歧与仲裁；不调用大模型、不写数据库、不创建任务</div>
+      </a>
+    </div>
+  </div>
+  <button type="button" class="fab" id="themeToggle" title="切换深色/浅色" aria-label="切换深色/浅色">
+    <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="20" height="20" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+    <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="20" height="20" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+  </button>
+  <script>
+  (function () {
+      var btn = document.getElementById('themeToggle');
+      var mq = window.matchMedia('(prefers-color-scheme: dark)');
+      function isDark() {
+          var t = document.documentElement.dataset.theme;
+          return t ? t === 'dark' : true; // 缺省默认墨绿黑暗主题
+      }
+      function syncIcon() {
+          // 图标语义 = 点击后切换到的目标主题：暗色显示太阳（切亮），亮色显示月亮（切暗）
+          var dark = isDark();
+          var sun = btn.querySelector('.icon-sun');
+          var moon = btn.querySelector('.icon-moon');
+          if (sun) sun.style.display = dark ? 'block' : 'none';
+          if (moon) moon.style.display = dark ? 'none' : 'block';
+      }
+      syncIcon();
+      btn.addEventListener('click', function () {
+          var next = isDark() ? 'light' : 'dark';
+          try { localStorage.setItem('ican-theme', next); } catch (e) {}
+          document.documentElement.dataset.theme = next;
+          syncIcon();
+      });
+      if (mq.addEventListener) mq.addEventListener('change', syncIcon);
+  })();
+  </script>
+</body></html>

@@ -1,0 +1,410 @@
+{% extends "base.html" %}
+{% import "_icons.html" as icons %}
+{% block title %}产品管理 · 门店管理助手{% endblock %}
+{% block body_class %}is-admin{% endblock %}
+{% block content %}
+<div class="page-header">
+    <a href="{{ url_for('admin.dashboard') }}" class="btn-back">← 返回看板</a>
+    <h2>产品管理</h2>
+    <a class="btn-pack-switch" href="{{ url_for('admin.change_log_view') }}">变更记录</a>
+    {% if pack %}
+    <span class="badge badge-secondary">{{ pack.name }}</span>
+    {% endif %}
+</div>
+
+<p class="form-hint">当前展示的是「{{ pack.name if pack else '默认包' }}」的产品清单；切换行业包后此处与店员填报下拉同步变化。</p>
+
+{# 分类去重（模板内计算，路由保持只读列表不动） #}
+{% set ns = namespace(cats=[]) %}
+{% for p in products %}
+    {% if p.category and p.category not in ns.cats %}{% set ns.cats = ns.cats + [p.category] %}{% endif %}
+{% endfor %}
+
+<div class="product-tools">
+    <input type="search" id="prodSearch" class="form-control" placeholder="搜索产品名称 / 分类…"
+           aria-label="搜索产品">
+    <div class="pill-filter" id="prodFilter" role="group" aria-label="分类筛选">
+        <button type="button" class="pill active" data-cat="">全部</button>
+        {% for c in ns.cats %}
+        <button type="button" class="pill" data-cat="{{ c }}">{{ c }}</button>
+        {% endfor %}
+    </div>
+    <button type="button" id="prodClearFilter" class="btn btn-outline btn-sm" hidden>清除筛选</button>
+</div>
+
+<form method="POST" action="{{ url_for('admin.product_add') }}" class="sales-form inline-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="form-row">
+        <div class="form-group flex-2">
+            <input type="text" name="product_name" class="form-control" placeholder="产品名称" required aria-label="产品名称">
+        </div>
+        <div class="form-group flex-1">
+            <input type="number" name="unit_price" class="form-control" placeholder="单价" step="0.01" min="0" aria-label="单价">
+        </div>
+        <div class="form-group flex-1">
+            <input type="number" name="cost_price" class="form-control" placeholder="成本价(可选)" step="0.01" min="0" aria-label="成本价（可选）">
+        </div>
+        <div class="form-group flex-1">
+            <input type="text" name="category" class="form-control" placeholder="分类" aria-label="分类">
+        </div>
+        <button type="submit" class="btn btn-primary">添加</button>
+    </div>
+</form>
+
+<div class="table-responsive">
+    <table class="table" id="productTable">
+        <caption class="sr-only">产品列表（产品 / 单价 / 成本价 / 分类 / 状态 / 操作）；窄屏下每行转为卡片，列名由单元格前方的标签给出</caption>
+        <thead>
+            <tr>
+                <th class="col-check" scope="col"><input type="checkbox" id="selectAll" aria-label="全选当前筛选的产品"></th>
+                <th scope="col">产品</th>
+                <th scope="col">单价</th>
+                <th scope="col">成本价</th>
+                <th scope="col">分类</th>
+                <th scope="col">状态</th>
+                <th class="col-actions" scope="col">操作</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for p in products %}
+        <tr class="{{ 'inactive' if not p.is_active }}" data-id="{{ p.id }}"
+            data-name="{{ p.product_name }}" data-cat="{{ p.category or '' }}">
+            <td class="col-check" data-label="选择"><input type="checkbox" class="row-select" data-id="{{ p.id }}" aria-label="选择 {{ p.product_name }}"></td>
+            <td data-label="产品">{{ p.product_name }}</td>
+            <td data-label="单价">¥{{ p.unit_price }}</td>
+            <td data-label="成本价">{% if p.cost_price is not none %}¥{{ p.cost_price }}{% else %}<span class="text-muted">待录入</span>{% endif %}</td>
+            <td data-label="分类">{{ p.category or '—' }}</td>
+            <td data-label="状态">
+                <button type="button" class="toggle-switch {{ 'on' if p.is_active else '' }}"
+                        role="switch"
+                        aria-checked="{{ 'true' if p.is_active else 'false' }}"
+                        aria-label="{{ '下架' if p.is_active else '上架' }} {{ p.product_name }}"
+                        title="{{ '点击下架' if p.is_active else '点击上架' }}"
+                        data-id="{{ p.id }}" data-active="{{ '1' if p.is_active else '0' }}">
+                    <span class="toggle-knob"></span>
+                </button>
+            </td>
+            <td class="col-actions row-actions" data-label="操作">
+                <button type="button" class="icon-btn inline-edit-trigger" data-id="{{ p.id }}"
+                        title="编辑" aria-label="编辑 {{ p.product_name }}">{{ icons.edit(18) }}</button>
+                <button type="button" class="icon-btn inline-delete" data-id="{{ p.id }}"
+                        data-name="{{ p.product_name }}"
+                        title="删除" aria-label="删除 {{ p.product_name }}">{{ icons.trash(18) }}</button>
+            </td>
+        </tr>
+        <tr class="inline-edit-row" data-id="{{ p.id }}" data-for="{{ p.id }}" hidden>
+            <td colspan="7">
+                <form class="inline-edit-form" data-id="{{ p.id }}">
+                    <div class="inline-edit-fields">
+                        <input type="text" name="product_name" class="form-control" value="{{ p.product_name }}" required aria-label="产品名称">
+                        <input type="number" name="unit_price" class="form-control" step="0.01" min="0" value="{{ p.unit_price }}" aria-label="单价">
+                        <input type="number" name="cost_price" class="form-control" step="0.01" min="0" value="{{ p.cost_price or '' }}" placeholder="成本价(可选)" aria-label="成本价">
+                        <input type="text" name="category" class="form-control" value="{{ p.category or '' }}" placeholder="分类" aria-label="分类">
+                        {# 行指纹随表单出：保存时服务端比一次，防止无声覆盖别人的编辑 #}
+                        <input type="hidden" name="_occ" value="{{ occ.get(p.id, '') }}">
+                    </div>
+                    <div class="form-error" hidden></div>
+                    <div class="inline-edit-actions">
+                        <button type="submit" class="btn btn-primary btn-sm">保存</button>
+                        <button type="button" class="btn btn-outline btn-sm inline-edit-cancel">取消</button>
+                    </div>
+                </form>
+            </td>
+        </tr>
+        {% else %}
+        <tr id="noProductRow"><td colspan="7"><div class="empty-state"><span class="empty-icon">{{ icons.package(44) }}</span>「{{ pack.name if pack else '默认包' }}」还没有产品，先在上方添加第一个吧。</div></td></tr>
+        {% endfor %}
+        <tr id="noMatchRow" hidden><td colspan="7"><div class="empty-state"><span class="empty-icon">{{ icons.package(44) }}</span>没有匹配的产品，换个关键词或分类试试。</div></td></tr>
+        </tbody>
+    </table>
+</div>
+
+{# 批量操作固定底栏（勾选后显示） #}
+<div class="batch-bar" id="batchBar" hidden>
+    <span class="batch-count">已选 <b id="batchCount">0</b> 项</span>
+    <div class="batch-actions">
+        <button type="button" class="btn btn-sm btn-outline" data-action="enable">上架</button>
+        <button type="button" class="btn btn-sm btn-outline" data-action="disable">下架</button>
+        <button type="button" class="btn btn-sm btn-danger" data-action="delete">删除</button>
+        <div class="batch-price">
+            <input type="text" id="batchPrice" class="form-control" placeholder="统一价 或 折扣%(如 80%)" aria-label="批量改价">
+            <button type="button" class="btn btn-sm btn-primary" data-action="set_price">改价</button>
+        </div>
+    </div>
+    <button type="button" class="btn btn-sm btn-outline" id="batchCancel">{{ icons.fail(14) }} 取消选择</button>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+    'use strict';
+    var csrfMeta = document.querySelector('meta[name="csrf-token"]');
+    var csrf = csrfMeta ? csrfMeta.getAttribute('content') : '';
+
+    function api(url, payload) {
+        var body = new URLSearchParams(payload || {}).toString();
+        return fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-CSRFToken': csrf,
+                'X-Requested-With': 'fetch'
+            },
+            body: body
+        }).then(function (r) {
+            return r.json().catch(function () {
+                throw new Error('响应格式错误');
+            });
+        }).catch(function () {
+            throw new Error('网络错误，请稍后重试');
+        });
+    }
+
+    function forEach(list, fn) {
+        Array.prototype.forEach.call(list, fn);
+    }
+
+    // ── 工具条：搜索 + 分类筛选（客户端过滤，联动全选/已选）──
+    var search = document.getElementById('prodSearch');
+    var filterBar = document.getElementById('prodFilter');
+    var clearBtn = document.getElementById('prodClearFilter');
+    var rows = Array.prototype.slice.call(document.querySelectorAll('tbody tr[data-id]'));
+    var noMatchRow = document.getElementById('noMatchRow');
+
+    function visibleRows() {
+        return rows.filter(function (r) { return !r.hidden; });
+    }
+
+    function applyFilter() {
+        var kw = (search ? search.value.trim() : '').toLowerCase();
+        var activePill = filterBar ? filterBar.querySelector('.pill.active') : null;
+        var catVal = activePill ? activePill.getAttribute('data-cat') : '';
+        var anyVisible = false;
+        rows.forEach(function (r) {
+            var name = (r.getAttribute('data-name') || '').toLowerCase();
+            var rc = r.getAttribute('data-cat') || '';
+            var show = (!kw || name.indexOf(kw) !== -1) && (!catVal || rc === catVal);
+            r.hidden = !show;
+            if (show) {
+                anyVisible = true;
+            } else {
+                var cb = r.querySelector('.row-select');
+                if (cb) cb.checked = false;
+                var er = document.querySelector('tr.inline-edit-row[data-for="' + r.getAttribute('data-id') + '"]');
+                if (er) er.hidden = true;
+            }
+        });
+        if (noMatchRow) noMatchRow.hidden = anyVisible;
+        if (clearBtn) clearBtn.hidden = !kw && !catVal;
+        syncSelectAll();
+        syncBatch();
+    }
+
+    if (filterBar) {
+        filterBar.addEventListener('click', function (e) {
+            var pill = e.target.closest('.pill');
+            if (!pill) return;
+            forEach(filterBar.querySelectorAll('.pill'), function (p) {
+                p.classList.toggle('active', p === pill);
+            });
+            applyFilter();
+        });
+    }
+    if (search) search.addEventListener('input', applyFilter);
+    if (clearBtn) clearBtn.addEventListener('click', function () {
+        if (search) search.value = '';
+        forEach(filterBar ? filterBar.querySelectorAll('.pill') : [], function (p) {
+            p.classList.toggle('active', p.getAttribute('data-cat') === '');
+        });
+        applyFilter();
+    });
+
+    // ── 选择集 + 批量底栏 ──
+    var selectAll = document.getElementById('selectAll');
+    var batchBar = document.getElementById('batchBar');
+    var batchCount = document.getElementById('batchCount');
+
+    function selectedIds() {
+        var ids = [];
+        rows.forEach(function (r) {
+            var cb = r.querySelector('.row-select');
+            if (cb && cb.checked) ids.push(r.getAttribute('data-id'));
+        });
+        return ids;
+    }
+
+    function syncSelectAll() {
+        if (!selectAll) return;
+        var vis = visibleRows();
+        var checked = vis.filter(function (r) {
+            var cb = r.querySelector('.row-select');
+            return cb && cb.checked;
+        }).length;
+        selectAll.checked = vis.length > 0 && checked === vis.length;
+        selectAll.indeterminate = checked > 0 && checked < vis.length;
+    }
+
+    function syncBatch() {
+        var n = selectedIds().length;
+        if (batchCount) batchCount.textContent = String(n);
+        if (batchBar) batchBar.hidden = n === 0;
+        // 批量底栏显示时避让右下角主题悬浮按钮（防窄屏重叠）
+        document.body.classList.toggle('has-batch-bar', n > 0);
+    }
+
+    if (selectAll) {
+        selectAll.addEventListener('change', function () {
+            var check = selectAll.checked;
+            visibleRows().forEach(function (r) {
+                var cb = r.querySelector('.row-select');
+                if (cb) cb.checked = check;
+            });
+            syncBatch();
+        });
+    }
+    rows.forEach(function (r) {
+        var cb = r.querySelector('.row-select');
+        if (cb) cb.addEventListener('change', function () {
+            syncSelectAll();
+            syncBatch();
+        });
+    });
+
+    // ── 内联编辑：展开/收起（同一时刻仅一行在编）──
+    function collapseAllEdit() {
+        var open = document.querySelector('tr.inline-edit-row:not([hidden])');
+        if (open) open.hidden = true;
+    }
+
+    function expandEdit(id) {
+        collapseAllEdit();
+        var er = document.querySelector('tr.inline-edit-row[data-id="' + id + '"]');
+        if (er) {
+            er.hidden = false;
+            var first = er.querySelector('input');
+            if (first) first.focus();
+        }
+    }
+
+    forEach(document.querySelectorAll('.inline-edit-trigger'), function (btn) {
+        btn.addEventListener('click', function () {
+            var id = btn.getAttribute('data-id');
+            var er = document.querySelector('tr.inline-edit-row[data-id="' + id + '"]');
+            if (er && !er.hidden) { er.hidden = true; return; }
+            expandEdit(id);
+        });
+    });
+
+    // ── 内联编辑提交（fetch update，失败行内红条不跳转）──
+    forEach(document.querySelectorAll('.inline-edit-form'), function (form) {
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            var id = form.getAttribute('data-id');
+            var errBox = form.querySelector('.form-error');
+            var saveBtn = form.querySelector('button[type="submit"]');
+            var payload = {
+                product_name: form.querySelector('[name="product_name"]').value,
+                unit_price: form.querySelector('[name="unit_price"]').value,
+                cost_price: form.querySelector('[name="cost_price"]').value,
+                category: form.querySelector('[name="category"]').value,
+                _occ: (form.querySelector('[name="_occ"]') || {}).value || ''
+            };
+            if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = '保存中…'; }
+            api('/admin/products/' + id + '/update', payload).then(function (j) {
+                if (j && j.ok) { window.location.reload(); return; }
+                if (errBox) { errBox.textContent = (j && j.message) || '保存失败'; errBox.hidden = false; }
+                if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = '保存'; }
+            }).catch(function (err) {
+                if (errBox) { errBox.textContent = err.message || '网络错误'; errBox.hidden = false; }
+                if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = '保存'; }
+            });
+        });
+        var cancel = form.querySelector('.inline-edit-cancel');
+        if (cancel) cancel.addEventListener('click', function () {
+            var er = form.closest('tr.inline-edit-row');
+            if (er) er.hidden = true;
+        });
+    });
+
+    // ── 上下架 toggle（下架先 confirm 防误触）──
+    forEach(document.querySelectorAll('.toggle-switch'), function (sw) {
+        sw.addEventListener('click', function () {
+            var id = sw.getAttribute('data-id');
+            var active = sw.getAttribute('data-active') === '1';
+            if (active && !window.confirm('确定下架该产品？下架后店员 H5 填报将无法选择。')) return;
+            api('/admin/products/' + id + '/toggle',
+                { expect_active: active ? '1' : '0' }).then(function (j) {
+                if (j && j.ok) { window.location.reload(); return; }
+                window.alert((j && j.message) || '操作失败');
+            }).catch(function (err) {
+                window.alert(err.message || '网络错误');
+            });
+        });
+    });
+
+    // ── 删除 ──
+    forEach(document.querySelectorAll('.inline-delete'), function (btn) {
+        btn.addEventListener('click', function () {
+            var id = btn.getAttribute('data-id');
+            var name = btn.getAttribute('data-name') || '该产品';
+            if (!window.confirm('确定删除「' + name + '」？删除后不可恢复。')) return;
+            api('/admin/products/' + id + '/delete', {}).then(function (j) {
+                if (j && j.ok) { window.location.reload(); return; }
+                window.alert((j && j.message) || '删除失败');
+            }).catch(function (err) {
+                window.alert(err.message || '网络错误');
+            });
+        });
+    });
+
+    // ── 批量操作 ──
+    function doBatch(action, extra) {
+        var ids = selectedIds();
+        if (ids.length === 0) return;
+        var q = { action: action, ids: ids.join(',') };
+        for (var k in (extra || {})) { q[k] = extra[k]; }
+        api('/admin/products/batch', q).then(function (j) {
+            if (j && j.ok) { window.location.reload(); return; }
+            window.alert((j && j.message) || '批量操作失败');
+        }).catch(function (err) {
+            window.alert(err.message || '网络错误');
+        });
+    }
+
+    if (batchBar) {
+        forEach(batchBar.querySelectorAll('[data-action]'), function (btn) {
+            btn.addEventListener('click', function () {
+                var action = btn.getAttribute('data-action');
+                var n = selectedIds().length;
+                if (action === 'delete') {
+                    if (!window.confirm('确定删除选中的 ' + n + ' 项产品？删除后不可恢复。')) return;
+                    doBatch(action);
+                    return;
+                }
+                if (action === 'set_price') {
+                    var priceInput = document.getElementById('batchPrice');
+                    var val = priceInput ? priceInput.value.trim() : '';
+                    if (!val) { window.alert('请填写统一价或折扣（如 15 或 80%）'); return; }
+                    if (!window.confirm('批量改价：' + val + '（' + n + ' 项）？')) return;
+                    doBatch(action, { price: val });
+                    return;
+                }
+                var label = action === 'enable' ? '上架' : '下架';
+                if (!window.confirm('确定批量' + label + '选中的 ' + n + ' 项产品？')) return;
+                doBatch(action);
+            });
+        });
+        var cancel = document.getElementById('batchCancel');
+        if (cancel) cancel.addEventListener('click', function () {
+            rows.forEach(function (r) {
+                var cb = r.querySelector('.row-select');
+                if (cb) cb.checked = false;
+            });
+            syncSelectAll();
+            syncBatch();
+        });
+    }
+})();
+</script>
+{% endblock %}

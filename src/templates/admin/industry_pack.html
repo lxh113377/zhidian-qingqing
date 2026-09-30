@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% import "_icons.html" as icons %}
+{% block title %}行业包管理 · 门店管理助手{% endblock %}
+{% block body_class %}is-admin{% endblock %}
+{% block content %}
+<div class="page-header">
+    <a href="{{ url_for('admin.dashboard') }}" class="btn-back">← 返回看板</a>
+    <h2>行业包管理</h2>
+</div>
+<p class="range-note">切换或自定义行业包，即可把系统变成对应行业的专属门店管理助手。包内容（知识域 / 题库 / 情景 / 指标）在编辑器中在线 DIY，无需改代码。</p>
+
+{% if override_error %}
+<div class="flash flash-warning" role="status">
+    {{ icons.alert(16) }}
+    <span>行业包「{{ override_error.pack_id }}」的自定义内容读取失败，当前显示的是内置默认内容——您保存过的修改暂未生效。请检查数据库状态后重试（{{ override_error.message }}）。</span>
+</div>
+{% endif %}
+
+<div class="record-list">
+    {% for p in packs %}
+    <div class="record-item">
+        <div class="record-header">
+            <strong>{{ p.name }}</strong>
+            <span class="chip">{{ p.id }}</span>
+            {% if p.manifest and p.manifest.declared %}
+            <span class="chip">清单 v{{ p.manifest.pack_version or '未填' }}</span>
+            {% endif %}
+            {% if p.active %}<span class="status active">当前激活</span>{% endif %}
+            {% if p.source == 'db' %}<span class="status inactive">自定义</span>{% endif %}
+            {% if p.manifest and not p.manifest.ok %}
+            <span class="status inactive">与当前平台不兼容</span>
+            {% endif %}
+        </div>
+        <div class="record-detail">
+            知识域 {{ p.domain_count }} · 指标 {{ p.metric_count }} · 题库 {{ p.question_count }} 题 · 情景 {{ p.scenario_count }} 个
+            {% if p.manifest %}
+            · 包协议 v{{ p.manifest.schema_min }}-v{{ p.manifest.schema_max }}（平台 v{{ p.manifest.platform_schema }}）
+            {%- if p.manifest.requires %} · 依赖能力 {{ p.manifest.requires|length }} 项{% endif %}
+            {%- if p.manifest.integrity_count %} · 校验和 {{ p.manifest.integrity_count }} 文件{% endif %}
+            {%- if p.manifest.vendor %} · 来源 {{ p.manifest.vendor }}{% endif %}
+            {% endif %}
+        </div>
+        {% if p.manifest and (p.manifest.errors or p.manifest.warnings) %}
+        <div class="record-note">
+            {% for line in p.manifest.errors %}
+            <div>{{ icons.alert(14) }} {{ line }}</div>
+            {% endfor %}
+            {% for line in p.manifest.warnings %}
+            <div>{{ line }}</div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% if p.description %}<div class="record-note">{{ p.description }}</div>{% endif %}
+        <div class="row-actions">
+            {% if not p.active %}
+            <form method="POST" action="{{ url_for('industry.pack_activate', pack_id=p.id) }}" class="inline-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-primary btn-sm">激活</button>
+            </form>
+            {% endif %}
+            <a href="{{ url_for('industry.pack_detail', pack_id=p.id) }}" class="btn btn-outline btn-sm">编辑内容</a>
+            {% if not p.is_file_pack %}
+            <form method="POST" action="{{ url_for('industry.pack_delete', pack_id=p.id) }}" class="inline-form"
+                  onsubmit="return confirm('确认删除自定义包 {{ p.name }}？其填报历史数据保留但不再计入统计。');">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-danger btn-sm">删除</button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <span class="empty-icon">{{ icons.report(44) }}</span>
+        <p>暂无行业包。</p>
+    </div>
+    {% endfor %}
+</div>
+
+<div class="section">
+    <h3>新建行业包</h3>
+    <form method="POST" action="{{ url_for('industry.pack_create') }}" class="sales-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="form-row">
+            <div class="form-group flex-1">
+                <label for="new_pack_id">包标识（小写字母开头，如 bakery）</label>
+                <input type="text" name="pack_id" id="new_pack_id" class="form-control" pattern="[a-z][a-z0-9_]{0,49}" required>
+            </div>
+            <div class="form-group flex-1">
+                <label for="new_name">行业名称</label>
+                <input type="text" name="name" id="new_name" class="form-control" maxlength="50" placeholder="如 烘焙店" required>
+            </div>
+        </div>
+        <div class="form-group">
+            <label for="new_desc">描述（可选）</label>
+            <input type="text" name="description" id="new_desc" class="form-control" maxlength="200">
+        </div>
+        <div class="form-group">
+            <label for="copy_from">复制现有包内容（可选，作为起点）</label>
+            <select name="copy_from" id="copy_from" class="form-control">
+                <option value="">空白包（仅内置兜底词表）</option>
+                {% for p in packs %}
+                <option value="{{ p.id }}">复制 {{ p.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <button type="submit" class="btn btn-primary">创建行业包</button>
+    </form>
+</div>
+{% endblock %}

@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}导入行业包 · 门店管理助手{% endblock %}
+{% block body_class %}is-admin{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h2>导入行业包</h2>
+    <span class="chip">未知 schema_version / 恶意外键 / 超长内容一律拒绝</span>
+</div>
+
+{% if report and not report.ok %}
+<div class="flash flash-danger" role="status">
+    <span>校验未通过：{{ report.errors[:5] | join('；') }}</span>
+</div>
+{% endif %}
+{% if report and report.ok %}
+<div class="flash flash-success" role="status">
+    <span>校验通过，完整性 {{ report.score }}/100</span>
+</div>
+{% endif %}
+
+<section class="panel">
+    <form method="POST" action="{{ url_for('diy.diy_import') }}" class="stack-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="form-group">
+            <label for="payload">行业包 JSON</label>
+            <textarea id="payload" name="payload" class="form-control" rows="14"
+                      required placeholder='{"schema_version":1,"meta":{...}}'>{{ payload }}</textarea>
+        </div>
+        <label class="checkbox-row">
+            <input type="checkbox" name="overwrite" value="1"> 覆盖同名包（默认拒绝冲突）
+        </label>
+        <button type="submit" class="btn btn-primary">校验并导入</button>
+    </form>
+    <p class="text-muted">提示：可先在「建包工作台」导出任意内置包作为模板。</p>
+</section>
+{% endblock %}

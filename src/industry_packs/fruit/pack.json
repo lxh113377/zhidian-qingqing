@@ -1,0 +1,152 @@
+{
+  "schema_version": 1,
+  "id": "fruit",
+  "name": "水果生鲜店",
+  "version": "1.0.0",
+  "description": "水果生鲜门店行业包：以鲜度与损耗为核心的售卖管理（stock/waste 角色即插即用）",
+  "terms": {
+    "store": "门店",
+    "record_dimension": "品类",
+    "record_dimension_plural": "品类",
+    "quantity_unit": "斤",
+    "material_group": "鲜度情况",
+    "material_remaining": "库存剩余",
+    "material_waste": "损耗报废",
+    "material_unit": "斤",
+    "staff_title": "店员",
+    "customer_title": "顾客",
+    "assistant_persona": "你是水果生鲜店经营助手",
+    "analyst_persona": "你是水果生鲜店经营分析师",
+    "trainer_persona": "你是水果生鲜店培训教练",
+    "scenario_customer": "水果店顾客",
+    "report_footer": "水果生鲜店经营参考",
+    "sample_dimension": "红富士苹果",
+    "sample_shelf_question": "草莓到货后怎么保鲜？"
+  },
+  "domains": [
+    {
+      "name": "鲜度管理",
+      "knowledge_file": "鲜度管理.md",
+      "tip": "熟记各品类储存温度与效期，坚持先进先出与当日翻检，保住「新鲜」这块招牌",
+      "keywords": ["新鲜", "冷藏", "保鲜", "效期"]
+    },
+    {
+      "name": "损耗控制",
+      "knowledge_file": "损耗控制.md",
+      "tip": "牢记「损耗率超 8% 即异常」的排查口径，练习少备勤补、分级促销与报损登记",
+      "keywords": ["损耗", "报损", "烂", "变质"]
+    },
+    {
+      "name": "称重计价",
+      "knowledge_file": "称重计价.md",
+      "tip": "坚持去皮称重、屏面向顾客、唱收唱付，练习先报单价再报总额的报价顺序",
+      "keywords": ["称重", "计价", "单价", "价格", "斤"]
+    },
+    {
+      "name": "顾客服务",
+      "knowledge_file": "顾客服务.md",
+      "tip": "打磨帮挑水果与口感售后的话术，坚持「不满意就补换、不推诿」的服务底线",
+      "keywords": ["话术", "服务", "挑选", "建议"]
+    }
+  ],
+  "weak_keywords": ["新鲜", "冷藏", "保鲜", "效期", "损耗", "报损", "烂", "变质",
+                    "称重", "计价", "单价", "价格", "斤", "话术", "服务"],
+  "synonyms": [
+    ["便宜", "优惠"],
+    ["坏", "变质"],
+    ["不新鲜", "新鲜"],
+    ["多少钱", "单价"],
+    ["怎么卖", "单价"],
+    ["保多久", "效期"],
+    ["甜不甜", "挑选"],
+    ["怎么", "如何"],
+    ["多少", "几"]
+  ],
+  "metrics": [
+    {
+      "key": "product_name",
+      "label": "品类",
+      "value_type": "text",
+      "unit": "",
+      "role": "dimension",
+      "agg": "count",
+      "required": true,
+      "sort": 1,
+      "legacy_column": "product_name"
+    },
+    {
+      "key": "product_sales_qty",
+      "label": "销量",
+      "value_type": "number",
+      "unit": "斤",
+      "role": "quantity",
+      "agg": "sum",
+      "required": true,
+      "sort": 2,
+      "legacy_column": "product_sales_qty"
+    },
+    {
+      "key": "total_revenue",
+      "label": "营收",
+      "value_type": "number",
+      "unit": "元",
+      "role": "amount",
+      "agg": "sum",
+      "required": true,
+      "sort": 3,
+      "legacy_column": "total_revenue"
+    },
+    {
+      "key": "raw_material_remaining",
+      "label": "库存剩余",
+      "value_type": "number",
+      "unit": "斤",
+      "role": "stock",
+      "agg": "sum",
+      "required": false,
+      "sort": 4,
+      "legacy_column": "raw_material_remaining"
+    },
+    {
+      "key": "raw_material_waste",
+      "label": "损耗报废",
+      "value_type": "number",
+      "unit": "斤",
+      "role": "waste",
+      "agg": "sum",
+      "required": false,
+      "sort": 5,
+      "legacy_column": "raw_material_waste"
+    },
+    {
+      "key": "abnormal_notes",
+      "label": "异常备注",
+      "value_type": "text",
+      "unit": "",
+      "role": "note",
+      "agg": "none",
+      "required": false,
+      "sort": 6,
+      "legacy_column": "abnormal_notes"
+    },
+    {
+      "key": "morning_price",
+      "label": "晨间进价",
+      "value_type": "number",
+      "unit": "元/斤",
+      "role": "other",
+      "agg": "avg",
+      "required": false,
+      "sort": 7,
+      "legacy_column": ""
+    }
+  ],
+  "formula_params": {
+    "waste_rate_threshold": 0.08
+  },
+  "files": {
+    "questions": "questions.json",
+    "scenarios": "scenarios.json",
+    "products": "products.json"
+  }
+}

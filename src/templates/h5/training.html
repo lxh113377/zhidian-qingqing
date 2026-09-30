@@ -1,0 +1,250 @@
+{% extends "base.html" %}
+{% import "_icons.html" as icons %}
+{% block title %}我的培训进度 · 门店管理助手{% endblock %}
+{% block body_class %}h5-page{% endblock %}
+{% block content %}
+{# 考核类型 → 中文标签映射：由路由传入 quiz_type_labels，模板兜底一份，
+   避免薄弱方向直接把英文 key（question/scenario）渲染给店员看 #}
+{% set type_labels = quiz_type_labels or {'question': '问答', 'scenario': '情景'} %}
+<div class="page-header">
+    <a href="{{ url_for('h5.dashboard') }}" class="btn-back">← 返回工作台</a>
+    <h2>我的培训进度</h2>
+</div>
+
+<div class="stat-cards">
+    <div class="stat-card"><div class="stat-num">{{ total }}</div><div class="stat-label">总题数</div></div>
+    <div class="stat-card"><div class="stat-num">{{ correct }}</div><div class="stat-label">答对</div></div>
+    <div class="stat-card"><div class="stat-num">{{ '%.0f'|format(pass_rate) }}%</div><div class="stat-label">通过率</div></div>
+</div>
+
+<div class="section">
+    <h3>分类通过率</h3>
+    <div class="record-list">
+        {% for t, v in by_type.items() %}
+        <div class="record-item">
+            <div class="record-header">
+                <span class="product-name">{{ type_labels.get(t, t) }}</span>
+                <span class="badge badge-{{ 'success' if v.pass_rate>=60 else 'danger' }}">{{ '%.0f'|format(v.pass_rate) }}%</span>
+            </div>
+            <div class="record-detail">共 {{ v.total }} 题，答对 {{ v.correct }} 题</div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+{% if weak %}
+<div class="section">
+    <h3>薄弱方向</h3>
+    <div class="feedback-card no">建议重点加强：<strong>{{ type_labels.get(weak, weak) }}</strong></div>
+</div>
+{% endif %}
+
+{# AI 学习者模型（第四轮 D1）：能力掌握度雷达 + 间隔重复复习排期 #}
+{% if mastery.has_data %}
+<div class="section">
+    <h3>AI 能力掌握度画像</h3>
+    <p class="text-muted trainer-hint">
+        整体掌握度 {{ mastery.overall }} 分（{{ mastery.overall_level }}）·
+        当前出题难度：<strong>{{ difficulty_label }}</strong>
+        <small>（按掌握度自动升降，熟练者加考例外，薄弱者只答要点）</small>
+    </p>
+    {# ⚠️ 属性必须用**单引号**：Flask 的 `|tojson` 只转义 < > & '，**不转义 "**。
+   写成双引号属性时，JSON 内部第一个 `"` 会提前闭合属性 —— 实测 data-labels 只剩 `[`，
+   `JSON.parse("[")` 抛 SyntaxError ⇒ 雷达图静默不渲染（既有缺陷，2026-09-23 定位）。
+   另一处正确写法见 admin/_decision_cockpit_inner.html 的 `|tojson|forceescape`。 #}
+<div id="masteryRadar" class="chart-box"
+     data-labels='{{ mastery.radar["labels"]|tojson }}'
+     data-values='{{ mastery.radar["values"]|tojson }}'></div>
+    <div class="record-list">
+        {% for d in mastery.domains %}
+        <div class="record-item">
+            <div class="record-header">
+                <span class="product-name">{{ d.domain }}</span>
+                <span class="badge badge-{{ 'success' if d.mastery>=70 else ('warning' if d.mastery>=55 else 'danger') }}">
+                    {{ d.mastery }} · {{ d.level }}
+                </span>
+            </div>
+            <div class="mastery-bar"><span class="mastery-fill" style="--pct: {{ d.mastery }}%"></span></div>
+            <div class="record-detail">
+                样本 {{ d.sample }} 题 · 置信度 {{ (d.confidence*100)|round|int }}%
+                {% if d.trend == 'up' %} · 进步中{% elif d.trend == 'down' %} · 有回落{% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<div class="section">
+    <h3>AI 复习排期（间隔重复）</h3>
+    <div class="record-list">
+        {% for s in schedule %}
+        <div class="record-item">
+            <div class="record-header">
+                <span class="product-name">{{ s.domain }}</span>
+                <span class="badge badge-{{ 'danger' if s.due_days<=0 else ('warning' if s.due_days<=1 else 'success') }}">
+                    {{ s.urgency }}
+                </span>
+            </div>
+            <div class="record-detail">
+                掌握度 {{ s.mastery }}（{{ s.level }}）→ 每 {{ s.interval_days }} 天复习一次
+                {% if s.due_days > 0 %} · 还剩 {{ s.due_days }} 天{% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    <a href="{{ url_for('ai.quiz', restart='1', topic=focus_domain) }}" class="btn btn-outline btn-block">
+        按 AI 排期开始补训：{{ focus_domain }}
+    </a>
+</div>
+{% endif %}
+
+{% if learning_advice %}
+<div class="section">
+    <h3>AI 学习建议</h3>
+    <div class="tip-card" role="listitem">
+        <span class="tip-icon">{{ icons.bulb(12) }}</span>
+        <span class="tip-text">{{ learning_advice }}</span>
+    </div>
+</div>
+{% endif %}
+
+{% if suggestions %}
+<div class="section">
+    <h3>AI 补训建议</h3>
+    {% for tip in suggestions %}
+    <div class="tip-card" role="listitem">
+        <span class="tip-icon">{{ icons.bulb(12) }}</span>
+        <span class="tip-text">{{ tip }}</span>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<div class="section">
+    <a href="{{ url_for('ai.trainer') }}" class="btn btn-primary btn-block">
+        AI 培训助手 · 问出你的问题
+    </a>
+    {% if weak_domain %}
+    <a href="{{ url_for('ai.quiz', restart='1', topic=weak_domain) }}" class="btn btn-outline btn-block">
+        薄弱点定向补训：{{ weak_domain }}
+    </a>
+    {% endif %}
+</div>
+
+<div class="section">
+    <h3>错题集</h3>
+    {% if wrong_list %}
+    <div class="record-list">
+        {% for r in wrong_list %}
+        <div class="record-item">
+            <div class="record-header">
+                <span class="product-name">{{ type_labels.get(r.quiz_type, r.quiz_type) }}</span>
+                <span class="badge badge-danger">未通过</span>
+            </div>
+            <div class="record-detail">{{ r.question }}</div>
+            {% if r.ai_feedback %}<div class="record-note neutral">点评：{{ r.ai_feedback }}</div>{% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state"><p>暂无错题，继续保持！</p></div>
+    {% endif %}
+</div>
+
+<div class="nav-links">
+    <a href="{{ url_for('ai.hub') }}" class="home-card"><span class="home-card-icon">{{ icons.ai(30) }}</span><span class="home-card-text"><strong>去 AI 培训</strong></span></a>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% if mastery.has_data %}
+{# echarts 引擎改由 base.html 的 withEcharts() 按需加载（604KB 不再阻塞首屏） #}
+<script>
+// 能力掌握度雷达（AI 学习者模型可视化）——V4：读 --chart-* 令牌，双主题感知 + 主题切换重绘
+(function () {
+    var el = document.getElementById('masteryRadar');
+    if (!el) return;
+    var labels = [];
+    var values = [];
+    try {
+        labels = JSON.parse(el.getAttribute('data-labels') || '[]');
+        values = JSON.parse(el.getAttribute('data-values') || '[]');
+    } catch (e) { return; }
+    if (!labels.length) return;
+    function cssVar(name, fallback) {
+        var v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+        return v || fallback;
+    }
+    function rgba(hex, alpha) {
+        var h = hex.replace('#', '');
+        if (h.length === 3) h = h.split('').map(function (c) { return c + c; }).join('');
+        var n = parseInt(h, 16);
+        return 'rgba(' + ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + alpha + ')';
+    }
+    // 引擎由 withEcharts() 按需加载，此处先占位，加载完成后再创建实例
+    var chart = null;
+    function render() {
+        if (!chart) return;
+        var dark = document.documentElement.dataset.theme === 'dark' ||
+                   (!document.documentElement.dataset.theme && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        var primary = cssVar('--chart-1', dark ? '#2DD4BF' : '#0F766E');
+        var sub = cssVar('--text-light', dark ? '#8CA09B' : '#5B6B67');
+        var split = cssVar('--chart-split', 'rgba(128,128,128,.12)');
+        var axis = cssVar('--chart-axis', 'rgba(128,128,128,.30)');
+        chart.setOption({
+            tooltip: {
+                trigger: 'item',
+                backgroundColor: cssVar('--card-bg', dark ? '#12211F' : '#fff'),
+                borderColor: cssVar('--border', dark ? '#1E3A34' : '#E3E8E6'),
+                textStyle: { color: cssVar('--text', dark ? '#E4EBE9' : '#16211F') }
+            },
+            radar: {
+                indicator: labels.map(function (n) { return { name: n, max: 100 }; }),
+                radius: '65%',
+                splitNumber: 4,
+                axisName: { color: sub, fontSize: 12 },
+                axisLine: { lineStyle: { color: axis } },
+                splitLine: { lineStyle: { color: split } },
+                splitArea: { areaStyle: { color: [rgba(primary, .03), rgba(primary, .07)] } }
+            },
+            series: [{
+                type: 'radar',
+                data: [{
+                    value: values, name: '掌握度',
+                    lineStyle: { color: primary, width: 2 },
+                    itemStyle: { color: primary },
+                    areaStyle: { color: rgba(primary, .25) }
+                }]
+            }]
+        });
+    }
+    // ── 雷达图按需渲染（性能 P0-2）：容器进入视口才拉 604KB 引擎 ──
+    function start() {
+        window.withEcharts(function () {
+            chart = echarts.getInstanceByDom(el) || echarts.init(el);
+            render();
+        });
+    }
+    if (!('IntersectionObserver' in window)) {
+        start();   // 老内核无 IntersectionObserver：立即加载，功能不丢
+    } else {
+        var io = new IntersectionObserver(function (entries) {
+            if (entries.some(function (e) { return e.isIntersecting; })) {
+                io.disconnect();
+                start();
+            }
+        }, { rootMargin: '200px' });
+        io.observe(el);
+    }
+    window.addEventListener('resize', function () { if (chart) chart.resize(); });
+    // 主题即时切换后重绘，坐标轴/文字读最新计算样式
+    document.addEventListener('ichart-theme', function () {
+        window.withEcharts(function () {
+            if (!chart) chart = echarts.getInstanceByDom(el) || echarts.init(el);
+            render();
+        });
+    });
+})();
+</script>
+{% endif %}
+{% endblock %}

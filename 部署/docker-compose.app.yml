@@ -1,0 +1,74 @@
+# iCAN Flask 应用 — Docker 部署（含 MySQL + 健康检查）
+# 用法：
+#   1. 复制项目根目录 .env.example 为 .env 并填入 SECRET_KEY 等
+#   2. docker compose -f docker-compose.app.yml up -d
+#   3. 浏览器打开 http://localhost:5000
+#
+# 说明：本文件部署 Flask 应用本体；AI 后端（Dify）见 docker-compose.yml。
+# 两者可独立使用：无 Dify 时 AI 功能自动回退规则版。
+
+version: '3.8'
+
+services:
+  # ── MySQL：业务数据库 ──
+  mysql:
+    image: mysql:8.0
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-ican_root_pw_change_me}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-ican}
+      MYSQL_USER: ${MYSQL_USER:-ican}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-ican_pw_change_me}
+      TZ: Asia/Shanghai
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-ican_root_pw_change_me}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+
+  # ── Flask 应用 ──
+  app:
+    build:
+      context: ..
+      dockerfile: 部署/Dockerfile
+    restart: always
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      FLASK_ENV: production
+      SECRET_KEY: ${SECRET_KEY:?请在 .env 中设置 SECRET_KEY}
+      DATABASE_URL: mysql+pymysql://${MYSQL_USER:-ican}:${MYSQL_PASSWORD:-ican_pw_change_me}@mysql:3306/${MYSQL_DATABASE:-ican}?charset=utf8mb4
+      LLM_PROVIDER: ${LLM_PROVIDER:-auto}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      DEEPSEEK_BASE_URL: ${DEEPSEEK_BASE_URL:-https://api.deepseek.com}
+      DEEPSEEK_MODEL: ${DEEPSEEK_MODEL:-deepseek-chat}
+      DIFY_BASE_URL: ${DIFY_BASE_URL:-}
+      DIFY_CHAT_APP_KEY: ${DIFY_CHAT_APP_KEY:-}
+      DIFY_ADVICE_APP_KEY: ${DIFY_ADVICE_APP_KEY:-}
+      DEMO_MERCHANT_ID: ${DEMO_MERCHANT_ID:-}
+      OPEN_API_ENABLED: ${OPEN_API_ENABLED:-false}
+      WEBHOOK_ENABLED: ${WEBHOOK_ENABLED:-false}
+      LOG_DIR: /app/data
+    ports:
+      - "5000:8080"
+    volumes:
+      - app_data:/app/data
+      - app_logs:/app/logs
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+volumes:
+  mysql_data:
+  app_data:
+  app_logs:

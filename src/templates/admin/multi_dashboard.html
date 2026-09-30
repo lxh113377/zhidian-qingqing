@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% block title %}多门店经营大脑 · 门店管理助手{% endblock %}
+{% block body_class %}is-admin{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h2>多门店经营大脑</h2>
+    <span class="chip">近 {{ days }} 天 · {{ summary.store_count }} 家门店（有数据 {{ summary.active_count }}）</span>
+</div>
+
+<section class="panel">
+    <div class="metric-strip">
+        <div class="metric"><span class="metric-label">总营收</span><strong>{{ '%.2f'|format(summary.revenue) }}</strong></div>
+        <div class="metric"><span class="metric-label">填报记录</span><strong>{{ summary.records }}</strong></div>
+        <div class="metric"><span class="metric-label">异常门店</span><strong>{{ alerts|length }}</strong></div>
+        <div class="metric"><span class="metric-label">今日分析用量</span><strong>{{ quota.used }}/{{ quota.limit }}</strong></div>
+    </div>
+</section>
+
+{% if alerts %}
+<section class="panel">
+    <h3>异常门店提示</h3>
+    <div class="list-rows">
+        {% for a in alerts %}
+        <div class="list-row">
+            <span>{{ a.store_name }}<small class="text-muted">（{{ a.kind }}）</small></span>
+            <span>{{ '%.1f%%'|format(a.value * 100) }} / 阈值 {{ '%.0f%%'|format(a.threshold * 100) }}</span>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+
+<section class="panel">
+    <h3>门店排行</h3>
+    <div class="list-rows">
+        {% for r in ranking %}
+        <div class="list-row">
+            <span>#{{ r.rank }} {{ r.store_name }}{% if not r.has_data %}<small class="text-muted">（无数据）</small>{% endif %}</span>
+            <span>营收 {{ '%.2f'|format(r.revenue) }} · 记录 {{ r.records }} · 损耗 {{ '%.1f%%'|format((r.waste_rate or 0) * 100) }}
+                <a class="btn btn-outline btn-sm" href="{{ url_for('multi.multi_store_detail', store_id=r.store_id) }}">下钻</a>
+            </span>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+
+<section class="panel">
+    <h3>跨店趋势</h3>
+    <div class="list-rows">
+        {% for d in trend %}
+        <div class="list-row"><span>{{ d.date }}</span><span>营收 {{ '%.2f'|format(d.revenue) }} · 数量 {{ d.quantity }}</span></div>
+        {% else %}
+        <p class="text-muted">本期暂无流水数据。</p>
+        {% endfor %}
+    </div>
+</section>
+
+<section class="panel">
+    <h3>AI 跨店分析</h3>
+    <form method="POST" action="{{ url_for('multi.multi_analyze') }}" class="inline-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn btn-primary btn-sm">生成跨店分析</button>
+    </form>
+    {% if analysis %}
+    <p class="text-muted">
+        来源：
+        {% if analysis.source == 'ai' %}AI 分析{% elif analysis.source == 'cache' %}AI 缓存结果{% else %}规则版{% endif %}
+        {% if analysis.fallback_reason %}（降级原因：{{ analysis.fallback_reason }}）{% endif %}
+    </p>
+    <div class="list-rows">
+        {% for f in analysis.findings %}
+        <div class="list-row">
+            <div>
+                <span><strong>{{ f.kind }}</strong> {{ f.text }}</span>
+                <small class="text-muted">
+                    {% for ev in f.evidence %}证据：门店{{ ev.store_id }}/{{ ev.metric }}={{ ev.value }}{% if not loop.last %}；{% endif %}{% endfor %}
+                </small>
+            </div>
+            {% if task_stores and task_assignees %}
+            <form method="POST" action="{{ url_for('tasks.task_create') }}" class="task-form task-create-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="next" value="{{ url_for('multi.multi_dashboard') }}">
+                <input type="hidden" name="source" value="ai_analysis">
+                <input type="hidden" name="title" value="{{ f.text[:120] }}">
+                <input type="hidden" name="detail" value="{{ f.kind }}">
+                <input type="hidden" name="evidence_json" value='{{ f.evidence|tojson }}'>
+                <select class="form-control" name="store_id" aria-label="任务门店" required>
+                    {% for store in task_stores %}
+                    <option value="{{ store.id }}"{{ ' selected' if f.evidence and f.evidence[0].store_id == store.id else '' }}>{{ store.name }}</option>
+                    {% endfor %}
+                </select>
+                <select class="form-control" name="assignee" aria-label="任务负责人" required>
+                    {% for option in task_assignees %}
+                    <option value="{{ option.value }}">{{ option.label }}</option>
+                    {% endfor %}
+                </select>
+                <input class="form-control" type="date" name="due_date" value="{{ default_due_date }}" required>
+                <button type="submit" class="btn btn-primary btn-sm">转为任务</button>
+            </form>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    <h4>AI 决策轨迹</h4>
+    <div class="list-rows">
+        {% for t in analysis.trace %}
+        <div class="list-row"><span>{{ t.step }}{% if not t.ok %}（降级）{% endif %}</span><span>{{ t.detail }}</span></div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</section>
+{% endblock %}

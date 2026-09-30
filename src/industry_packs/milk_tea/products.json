@@ -1,0 +1,17 @@
+[
+  {"product_name": "珍珠奶茶", "unit_price": 12.0, "cost_price": 4.5, "category": "奶茶"},
+  {"product_name": "杨枝甘露", "unit_price": 18.0, "cost_price": 6.8, "category": "果茶"},
+  {"product_name": "烧仙草", "unit_price": 15.0, "cost_price": 5.6, "category": "奶茶"},
+  {"product_name": "柠檬水", "unit_price": 8.0, "cost_price": null, "category": "果茶"},
+  {"product_name": "芋泥波波", "unit_price": 16.0, "cost_price": 6.0, "category": "奶茶"},
+  {"product_name": "生椰拿铁", "unit_price": 20.0, "cost_price": 7.2, "category": "咖啡"},
+  {"product_name": "四季春茶", "unit_price": 10.0, "cost_price": 3.0, "category": "纯茶"},
+  {"product_name": "蜜桃乌龙", "unit_price": 17.0, "cost_price": 5.8, "category": "果茶"},
+  {"product_name": "抹茶奶绿", "unit_price": 15.0, "cost_price": 5.2, "category": "奶茶"},
+  {"product_name": "黑糖珍珠鲜奶", "unit_price": 19.0, "cost_price": 6.9, "category": "奶茶"},
+  {"product_name": "柠檬蜂蜜茶", "unit_price": 13.0, "cost_price": 4.2, "category": "果茶"},
+  {"product_name": "芝士葡萄", "unit_price": 22.0, "cost_price": 8.4, "category": "果茶"},
+  {"product_name": "椰果奶茶", "unit_price": 13.0, "cost_price": 4.6, "category": "奶茶"},
+  {"product_name": "双拼果茶", "unit_price": 20.0, "cost_price": 7.0, "category": "果茶"},
+  {"product_name": "茉莉绿茶", "unit_price": 9.0, "cost_price": 2.5, "category": "纯茶"}
+]

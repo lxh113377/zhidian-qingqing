@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% import "_icons.html" as icons %}
+{% block title %}员工考核记录 · 门店管理助手{% endblock %}
+{% block body_class %}is-admin{% endblock %}
+{% block content %}
+<div class="page-header">
+    <a href="{{ url_for('admin.dashboard') }}" class="btn-back">← 返回看板</a>
+    <h2>员工考核记录</h2>
+</div>
+
+<div class="table-responsive">
+    <table class="table">
+        <caption class="sr-only">店员考核记录（店员 / 类型 / 题目 / 得分 / 结果 / 时间）</caption>
+        <thead><tr><th scope="col">店员</th><th scope="col">类型</th><th scope="col">题目</th><th scope="col">得分</th><th scope="col">结果</th><th scope="col">时间</th></tr></thead>
+        <tbody>
+        {% for r in records %}
+        <tr>
+            <td>{{ r.staff.display_name if r.staff else '—' }}</td>
+            <td>{{ '问答' if r.quiz_type=='question' else '情景' }}</td>
+            <td>{{ r.question }}</td>
+            <td>{{ r.score if r.score is not none else '—' }}</td>
+            <td><span class="badge badge-{{ 'success' if r.is_correct else 'danger' }}">{{ '通过' if r.is_correct else '未通过' }}</span></td>
+            <td>{{ r.created_at.strftime('%m-%d %H:%M') if r.created_at else '—' }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6"><div class="empty-state"><span class="empty-icon">{{ icons.quiz(44) }}</span>还没有考核记录，店员完成一次问答或情景考核后这里就会出现数据。</div></td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

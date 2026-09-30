@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% import "_icons.html" as icons %}
+{% block title %}AI 培训助手 · 门店管理助手{% endblock %}
+{% block body_class %}h5-page{% endblock %}
+{% block content %}
+<div class="page-header">
+    <a href="{{ url_for('ai.hub') }}" class="btn-back">← 返回 AI 培训</a>
+    <h2>AI 培训助手</h2>
+</div>
+<p class="login-subtitle">
+    问业务 / 知识问题，AI 结合你的错题给针对性提示
+    <small class="text-muted"> · 建议仅供参考，最终以店长要求为准</small>
+</p>
+
+{% if personal and personal.weak_labels %}
+<div class="section">
+    <h3>你的薄弱点（基于最近错题）</h3>
+    <div class="kw-tags">
+        {% for label in personal.weak_labels[:3] %}
+        <span class="kw-chip kw-chip-miss">{{ icons.fail(14) }} {{ label }}</span>
+        {% endfor %}
+        <span class="kw-chip kw-chip-num"># 已错 {{ personal.wrong_count }} 题</span>
+    </div>
+    <p class="text-muted trainer-hint">AI 会在回答中附带对应的复习建议。</p>
+</div>
+{% elif personal and personal.recent_wrong_questions %}
+<div class="section">
+    <h3>你的薄弱点</h3>
+    <p class="text-muted trainer-hint">继续提问即可获得复习提示。</p>
+</div>
+{% endif %}
+
+{# RAG 溯源：本条回答引用了知识库哪些条目（D4），可逐条反馈有用/没用 #}
+<div class="section" id="trainerRefs" {% if not refs %}hidden{% endif %}>
+    <h3>本条回答的知识出处</h3>
+    <div class="kw-tags" id="trainerRefList">
+        {% for r in refs %}
+        <span class="kw-chip ref-chip" data-domain="{{ r.domain }}" data-title="{{ r.title }}">
+            {{ r.domain }} · {{ r.title }}
+            <button type="button" class="ref-btn" data-useful="1">有用</button>
+            <button type="button" class="ref-btn" data-useful="0">没用</button>
+        </span>
+        {% endfor %}
+    </div>
+    <p class="text-muted trainer-hint">你的反馈会写回检索权重，用得越多检索越准。</p>
+</div>
+
+<div class="chat-log" id="trainerLog" role="log" aria-live="polite" aria-label="与 AI 培训助手的对话">
+    {% for line in history %}
+        {% if line.startswith('问：') %}
+        <div class="bubble staff">{{ line[2:] }}</div>
+        {% elif line.startswith('答：') %}
+        <div class="bubble customer">{{ line[2:] }}</div>
+        {% else %}
+        <div class="bubble">{{ line }}</div>
+        {% endif %}
+    {% endfor %}
+</div>
+
+<form method="POST" action="{{ url_for('ai.trainer') }}" class="chat-input-row" id="trainerForm"
+      data-ajax data-feedback-url="{{ url_for('ai.kb_feedback') }}"
+      data-degraded-text="{{ degraded_text }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="text" name="ask" class="form-control auto-grow" placeholder="例如：顾客嫌贵怎么应对？"
+           autocomplete="off" autocapitalize="off" enterkeyhint="send" required aria-label="提问输入">
+    <button type="submit" class="btn btn-primary">提问</button>
+</form>
+
+<div class="quick-questions">
+    <button type="button" class="btn btn-outline btn-xs" data-quick="我最近哪块比较弱，先复习什么？">查短板</button>
+    <button type="button" class="btn btn-outline btn-xs" data-quick="顾客嫌贵砍价怎么应对？">砍价应对</button>
+    <button type="button" class="btn btn-outline btn-xs" data-quick="{{ labels.sample_dimension }}怎么保存？">保存须知</button>
+    <button type="button" class="btn btn-outline btn-xs" data-quick="{{ labels.sample_shelf_question }}">效期</button>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ asset_url('js/ai_trainer.js') }}"></script>
+{% endblock %}

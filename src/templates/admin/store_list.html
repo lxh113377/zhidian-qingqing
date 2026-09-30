@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% import "_icons.html" as icons %}
+{% block title %}门店与成员 · 门店管理助手{% endblock %}
+{% block body_class %}is-admin{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h2>门店与成员</h2>
+    <span class="chip">一个商家可管理多家门店</span>
+</div>
+
+<section class="panel">
+    <h3>新增门店</h3>
+    <form method="POST" action="{{ url_for('stores.add_store') }}" class="inline-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="text" name="name" class="form-control" required maxlength="100"
+               placeholder="门店名称，如：红谷滩店" aria-label="门店名称">
+        <input type="text" name="code" class="form-control" required maxlength="50"
+               placeholder="门店编码，如：hgt" aria-label="门店编码">
+        <input type="text" name="address" class="form-control" maxlength="200" placeholder="地址（选填）" aria-label="门店地址（选填）">
+        <input type="text" name="phone" class="form-control" maxlength="20" placeholder="电话（选填）" aria-label="门店电话（选填）">
+        <button type="submit" class="btn btn-primary btn-sm">创建门店</button>
+    </form>
+</section>
+
+<div class="staff-grid">
+    {% for s in stores %}
+    <div class="staff-card {{ 'inactive' if not s.is_active }}">
+        <div class="record-header">
+            <strong>{{ s.name }}</strong>
+            <span class="status {{ 'active' if s.is_active else 'inactive' }}">{{ '当前门店' if s.id == current_store_id else ('启用' if s.is_active else '停用') }}</span>
+        </div>
+        <small>编码：{{ s.code }}</small>
+        <small>地址：{{ s.address or '—' }}</small>
+        <small>电话：{{ s.phone or '—' }}</small>
+        <small>店长：{% for m in managers %}{% if s.id in manager_access.get(m.id, []) %}{{ m.username }} {% endif %}{% endfor %}{% if not managers %}—{% endif %}</small>
+        <small>店员：{% for st in staffs %}{% if st.store_id == s.id %}{{ st.display_name }} {% endif %}{% endfor %}</small>
+        <small>当前行业包：{% for p in packs %}{% if p.id == s.active_pack_id %}{{ p.name }}{% endif %}{% endfor %}{% if not s.active_pack_id %}跟随全局{% endif %}</small>
+
+        <form method="POST" action="{{ url_for('stores.set_store_pack', store_id=s.id) }}" class="mt-8">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="form-group">
+                <label>设置本店行业包</label>
+                <select name="pack_id" class="form-control" aria-label="设置本店行业包">
+                    <option value="">跟随全局</option>
+                    {% for p in packs %}
+                    <option value="{{ p.id }}"{{ ' selected' if p.id == s.active_pack_id else '' }}>{{ p.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit" class="btn btn-outline btn-sm">保存行业包</button>
+        </form>
+
+        <form method="POST" action="{{ url_for('stores.add_member', store_id=s.id) }}" class="mt-8">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="form-group">
+                <label>邀请成员</label>
+                <select name="role" class="form-control" aria-label="成员角色">
+                    <option value="staff">店员（绑定本店）</option>
+                    <option value="manager">店长（授权本店）</option>
+                </select>
+            </div>
+            <input type="text" name="username" class="form-control" required maxlength="50"
+                   placeholder="登录账号" autocomplete="off" aria-label="成员登录账号">
+            <input type="text" name="display_name" class="form-control" maxlength="50"
+                   placeholder="姓名（店员用）" autocomplete="off" aria-label="成员姓名（店员用）">
+            <input type="password" name="password" class="form-control" required minlength="8"
+                   placeholder="初始密码（至少 8 位，含字母和数字）" autocomplete="new-password"
+                   aria-label="成员初始密码（至少 8 位，含字母和数字）">
+            <button type="submit" class="btn btn-outline btn-sm">添加成员</button>
+        </form>
+
+        <form method="POST" action="{{ url_for('stores.toggle_store', store_id=s.id) }}" class="mt-8">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="expect_active" value="{{ '1' if s.is_active else '0' }}">
+            <button type="submit" class="btn btn-outline btn-sm">{{ '停用门店' if s.is_active else '启用门店' }}</button>
+        </form>
+        {% if s.id != current_store_id %}
+        <form method="POST" action="{{ url_for('stores.switch_store') }}" class="mt-8">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="store_id" value="{{ s.id }}">
+            <button type="submit" class="btn btn-primary btn-sm">切换为当前门店</button>
+        </form>
+        {% endif %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <span class="empty-icon">{{ icons.admin(44) }}</span>
+        <p>还没有门店，先在上方创建第一家门店吧。</p>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

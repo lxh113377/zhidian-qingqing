@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% block title %}数据批量导入 · 门店管理助手{% endblock %}
+{% block body_class %}is-admin{% endblock %}
+{% block content %}
+<div class="page-header">
+    <a href="{{ url_for('admin.dashboard') }}" class="btn-back">← 返回看板</a>
+    <h2>数据批量导入</h2>
+</div>
+
+<form method="POST" action="{{ url_for('admin.data_import_view') }}"
+      enctype="multipart/form-data" class="sales-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="form-group">
+        <label for="store_id">导入到哪个门店</label>
+        <select name="store_id" id="store_id" class="form-control" required>
+            {% for s in stores %}
+            <option value="{{ s.id }}" {% if s.id == store_id %}selected{% endif %}>{{ s.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="form-group">
+        <label for="default_staff_id">默认店员（CSV 店员列为空时记到该店员名下）</label>
+        <select name="default_staff_id" id="default_staff_id" class="form-control">
+            {% for sid, staffs in staff_options.items() %}
+            {% for st in staffs %}
+            <option value="{{ st.id }}" data-store="{{ sid }}"
+                    {% if st.id == default_staff_id %}selected{% endif %}>{{ st.display_name }}（{{ st.username }}）</option>
+            {% endfor %}
+            {% endfor %}
+        </select>
+    </div>
+    <div class="form-group">
+        <label for="file">CSV 文件（必填：日期、产品、销量；可选：营收、店员、备注、损耗、剩余）</label>
+        <input type="file" name="file" id="file" accept=".csv,.xlsx,.xls" required>
+    </div>
+    <input type="hidden" name="mode" value="preview" id="mode-field">
+    <button type="submit" class="btn btn-primary btn-block" id="btn-preview">预览校验结果</button>
+    {% if report is defined and mode == 'preview' and not report.errors and report.total > 0 %}
+    <button type="submit" class="btn btn-success btn-block" id="btn-commit"
+            onclick="document.getElementById('mode-field').value='commit';">
+        确认导入 {{ report.total - report.duplicates }} 行
+    </button>
+    {% endif %}
+</form>
+
+{% if report is defined %}
+<section class="import-report">
+    <h3>{{ '导入结果' if mode == 'commit' else '校验预览' }}</h3>
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr><th>总计</th><th>{{ '新增' if mode == 'commit' else '可导入' }}</th><th>重复跳过</th><th>失败</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>{{ report.total }}</td>
+                    <td>{{ report.inserted if mode == 'commit' else (report.total - report.duplicates - report.errors|length) }}</td>
+                    <td>{{ report.duplicates }}</td>
+                    <td>{{ report.errors|length }}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    {% if report.ignored_columns %}
+    <p class="form-hint">以下列未被识别，<strong>不会写入系统</strong>（修复表头或删掉这些列后重新上传）：
+        {{ report.ignored_columns | join('、') }}</p>
+    {% endif %}
+    {% if report.errors %}
+    <p class="form-hint">失败行回执（共 {{ report.errors|length }} 行，全部列出）：</p>
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr><th>行号</th><th>字段</th><th>原因</th></tr>
+            </thead>
+            <tbody>
+                {% for e in report.errors[:200] %}
+                <tr><td>{{ e.row }}</td><td>{{ e.field }}</td><td>{{ e.reason }}</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% if report.errors|length > 200 %}
+    <p>仅显示前 200 条失败明细，其余 {{ report.errors|length - 200 }} 条同因请修复后重新上传。</p>
+    {% endif %}
+    {% elif mode == 'preview' %}
+    <p>未发现错误，可直接确认导入。</p>
+    {% endif %}
+</section>
+{% endif %}
+
+<script>
+// 门店 ↔ 默认店员联动：只显示所选门店的店员
+document.addEventListener('DOMContentLoaded', function () {
+    var storeSel = document.getElementById('store_id');
+    var staffSel = document.getElementById('default_staff_id');
+    if (!storeSel || !staffSel) return;
+    function sync() {
+        var sid = storeSel.value;
+        var first = null;
+        Array.prototype.forEach.call(staffSel.options, function (opt) {
+            var show = opt.getAttribute('data-store') === sid;
+            opt.hidden = !show;
+            if (show && !first) first = opt;
+        });
+        if (first && !staffSel.selectedOptions[0].hidden) return;
+        if (first) staffSel.value = first.value;
+    }
+    storeSel.addEventListener('change', sync);
+    sync();
+});
+</script>
+{% endblock %}

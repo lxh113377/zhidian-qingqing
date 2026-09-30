@@ -1,0 +1,121 @@
+name: Quality Gate
+
+# 2026-09-22 适配：仓库根已变更为「工作区根」（代码在 iCAN大学生创新创业大赛/，
+# 权威门禁副本在 交付物/提交包/工程佐证材料/05-源代码全文/），故各步骤显式声明工作目录。
+# ⚠️ 门禁必须在权威副本目录跑：在工作区根跑时第 10 项会「跳过校验却显示 ✅」（假通过）。
+
+on:
+  push:
+    branches: [main, master, develop]
+  pull_request:
+    branches: [main, master, develop]
+  workflow_dispatch:
+
+concurrency:
+  group: ican-quality-gate
+  cancel-in-progress: true
+
+# H31（第 18 轮）：GITHUB_TOKEN 不给 permissions 时走仓库默认（可能含写权限），
+# 本 workflow 只读代码，故显式收到最小。钉 SHA 的那条判据见 quality_gate 第 26 项。
+permissions:
+  contents: read
+
+jobs:
+  quality-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4；升级=显式改这行（防上游 tag 移动悄悄改 CI 行为）
+
+      - name: 安装 Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5；升级=显式改这行（防上游 tag 移动悄悄改 CI 行为）
+        with:
+          python-version-file: .python-version
+          cache: pip
+
+      - name: 安装依赖
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r iCAN大学生创新创业大赛/requirements.txt
+          pip install "ruff==0.16.5"  # 钉版：与本仓全局实测同版本，防"本地绿 CI 红"的尺子漂移
+
+      - name: 准备演示数据库（CI 检出无 ican.db，需按种子重建）
+        run: python init_db.py --if-empty
+        working-directory: iCAN大学生创新创业大赛
+        env:
+          PYTHONIOENCODING: utf-8
+          SECRET_KEY: ci-test-only-not-a-real-secret
+
+      - name: 执行质量门禁（静态检查 + 冒烟 + 漏洞回归 + L4 + 规范漂移）
+        run: python quality_gate.py
+        working-directory: 交付物/提交包/工程佐证材料/05-源代码全文
+        env:
+          PYTHONIOENCODING: utf-8
+          SECRET_KEY: ci-test-only-not-a-real-secret
+
+      # ── 交付链守卫（2026-09-24 第 8 轮，对标 InvenTree 把「链上每一步」当 CI 一等作业）──
+      # 起因：第 6 轮实测发现 build_snapshot_set.py 自提交 85880b9 起就因
+      # task_flow 来源白名单而必抛 ValueError —— 快照集无法重建，但 CI 一直是绿的，
+      # 断了好几轮才被人肉发现。CI runner 是一次性环境，正好适合跑这种
+      # 「会清库重播」的生成器：既能验证链路，又不会污染任何真实产物。
+      - name: 交付链守卫 A：演示快照集必须能重建（H9）
+        run: |
+          python build_snapshot_set.py | tee /tmp/snap.log
+          grep -q "DONE:" /tmp/snap.log || { echo "::error::快照生成器未输出 DONE 行，链路断裂"; exit 1; }
+          n=$(ls 演示快照集/*.html 2>/dev/null | wc -l)
+          [ "$n" -ge 20 ] || { echo "::error::快照产物仅 $n 个 html（预期 ≥20），生成不完整"; exit 1; }
+          echo "快照重建通过：$n 个页面"
+        working-directory: 交付物/提交包/工程佐证材料/05-源代码全文
+        env:
+          PYTHONIOENCODING: utf-8
+          SECRET_KEY: ci-test-only-not-a-real-secret
+
+      # 第 8 轮实测：项目目录里还留着仓库根迁移前的 .github/workflows/quality-gate.yml
+      # 与 dependabot.yml —— Actions 只读仓库根那份（已实测踩过），这两份是永远不会跑的
+      # 死配置，且与根上的已经漂移（哈希不同）。放着就是误导源，已归档到
+      # iCAN大学生创新创业大赛/archive/ci-pre-root-move-20260924/，并在此钉一条防复发。
+      #
+      # 边界：`交付物/**/.github/` 不在禁止之列 —— 那是「05-源代码全文」对仓库自身的
+      # 镜像内容（交付物文本），不是会让人误以为「改了它就生效」的活配置；
+      # 且它按交付目录的相对路径书写，与根版本本来就不该字节相同。
+      - name: 交付链守卫 B：工作副本与部署包内不得有生效中的 CI 配置
+        run: |
+          # 必须关 quotePath：否则 git 把中文路径输出成 "\344\272\244…" 八进制转义，
+          # 下面按「交付物」字面排除的分支永远不会命中（本轮本地实测踩到）。
+          stray=$(git -c core.quotePath=false ls-files \
+                  | grep -E '(^|/)\.github/(workflows/|dependabot)' \
+                  | grep -v '^\.github/' | grep -v '交付物/' || true)
+          if [ -n "$stray" ]; then
+            echo "::error::发现工作副本/部署包内的游离 CI 配置（Actions 不读它，只会误导维护者）："
+            echo "$stray"
+            echo "如属交付镜像内容，请放到 交付物/ 之下；如是残留，请归档并在根工作流修改。"
+            exit 1
+          fi
+          echo "无游离 CI 配置（交付物/ 下的镜像副本按设计放行）"
+
+      # 交付链守卫 C（2026-09-25，对标第 12 轮）：交付副本 ⇄ 仓库根 的字节一致性。
+      # 起因：守卫 B 只拦"游离的活配置"，对 `交付物/**/.github/` **放行**——于是交付包里
+      # 那份 quality-gate.yml 可以是仓库根迁移前的 42 行旧版（还写着"本项目尚未初始化 git 仓库"），
+      # 门禁第 10 项也完全不看 `.github`，漂移无人拦截（走查实测：根 89 行 ⇄ 镜像 42 行）。
+      # 同批把 ROOT_DELIVERED 名单外的根级脚本也纳入：`test_rate_limit_trace.py` 是门禁第 14 项
+      # 自己跑的脚本，一旦三副本漂移，CI 会静默跑不同版本的测试。
+      # 交付链守卫 D（2026-09-27，对标第 32 轮）：依赖已知漏洞必须被真扫过，且回执足够新鲜。
+      # 起因：全仓 45 项门禁没有一个看过「钉的这个版本有没有已知漏洞」；且历史那份 dependabot.yml
+      # 一直躺在子目录里（GitHub 只读仓库根）⇒ 从未生效。两面都扫：声明面 0 条 ≠ 环境面 0 条
+      # （本轮实测环境面 10 条 / 2 包，其中 pypdf 是未声明无人用的孤儿包，只有环境面看得见）。
+      - name: 交付链守卫 D：依赖两面漏洞审计（声明面 + 环境面，工具钉版）
+        run: |
+          pip install "pip-audit==2.10.1"  # 钉版：与门禁第 46 项读的 tool_pin 同源
+          # 只判"有没有未豁免的漏洞"，不覆写入库回执：环境面按各自机器解析，
+          # 要求两份回执逐字节相同 = 造一条在任何机器上都不可能满足的判据。
+          python iCAN大学生创新创业大赛/check_dependency_audit.py --no-write
+          rc=$?; if [ $rc -gt 1 ]; then
+            echo "::warning::审计未验证（rc=$rc：工具/网络不可用），本地门禁第 46 项仍按新鲜回执判"
+          elif [ $rc -eq 1 ]; then
+            echo "::error::发现未豁免的已知漏洞，必须升版或在台账里写明理由与到期日"; exit 1
+          fi
+      - name: 交付链守卫 C：交付副本与仓库根无漂移（.github + 名单外根级脚本）
+        run: |
+          python iCAN大学生创新创业大赛/check_delivery_drift.py
+        env:
+          PYTHONIOENCODING: utf-8

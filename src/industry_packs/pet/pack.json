@@ -1,0 +1,141 @@
+{
+  "schema_version": 1,
+  "id": "pet",
+  "name": "宠物服务店",
+  "version": "1.0.0",
+  "description": "宠物洗护、寄养与健康服务门店行业包（含洗护流程、健康安全、行为管理与门店服务四域）",
+  "terms": {
+    "store": "门店",
+    "record_dimension": "服务项目",
+    "record_dimension_plural": "服务项目",
+    "quantity_unit": "单",
+    "material_group": "耗材情况",
+    "material_remaining": "耗材剩余",
+    "material_waste": "耗材损耗",
+    "material_unit": "份",
+    "staff_title": "宠物护理师",
+    "customer_title": "宠物主人",
+    "assistant_persona": "你是宠物服务店经营助手",
+    "analyst_persona": "你是宠物服务店经营分析师",
+    "trainer_persona": "你是宠物服务店培训教练",
+    "scenario_customer": "宠物主人",
+    "report_footer": "宠物服务店经营参考",
+    "sample_dimension": "犬只基础洗护",
+    "sample_shelf_question": "宠物洗完澡多久能打疫苗？"
+  },
+  "domains": [
+    {
+      "name": "洗护流程",
+      "knowledge_file": "洗护流程.md",
+      "tip": "固化「接宠检查 → 洗护 → 吹干 → 复检 → 交付」五步，重点练习打结处理与吹干标准",
+      "keywords": ["洗护", "吹干", "造型", "打结"]
+    },
+    {
+      "name": "健康与安全",
+      "knowledge_file": "健康与安全.md",
+      "tip": "牢记疫苗门槛与应激识别，异常立即停止服务并联系主人，绝不冒险操作",
+      "keywords": ["疫苗", "健康", "应激", "安全"]
+    },
+    {
+      "name": "宠物行为管理",
+      "knowledge_file": "宠物行为管理.md",
+      "tip": "掌握温和保定与攻击性识别，用降低应激的方式完成服务，保护宠物也保护自己",
+      "keywords": ["保定", "行为", "攻击", "安抚"]
+    },
+    {
+      "name": "门店服务与会员",
+      "knowledge_file": "门店服务与会员.md",
+      "tip": "预约、报价、寄养交接全程留痕，先说明规则再谈权益，不做过度推销",
+      "keywords": ["预约", "报价", "寄养", "会员"]
+    }
+  ],
+  "weak_keywords": ["洗护", "吹干", "疫苗", "皮肤", "应激", "保定", "预约", "寄养", "报价", "会员"],
+  "synonyms": [
+    ["洗澡", "洗护"],
+    ["剪毛", "造型"],
+    ["打针", "疫苗"],
+    ["咬人", "攻击"],
+    ["托管", "寄养"],
+    ["多少钱", "价格"],
+    ["价钱", "价格"],
+    ["便宜", "优惠"],
+    ["省钱", "优惠"],
+    ["怎么办", "如何"]
+  ],
+  "metrics": [
+    {
+      "key": "product_name",
+      "label": "服务项目",
+      "value_type": "text",
+      "unit": "",
+      "role": "dimension",
+      "agg": "count",
+      "required": true,
+      "sort": 1,
+      "legacy_column": "product_name"
+    },
+    {
+      "key": "product_sales_qty",
+      "label": "服务单数",
+      "value_type": "number",
+      "unit": "单",
+      "role": "quantity",
+      "agg": "sum",
+      "required": true,
+      "sort": 2,
+      "legacy_column": "product_sales_qty"
+    },
+    {
+      "key": "total_revenue",
+      "label": "营收",
+      "value_type": "number",
+      "unit": "元",
+      "role": "amount",
+      "agg": "sum",
+      "required": true,
+      "sort": 3,
+      "legacy_column": "total_revenue"
+    },
+    {
+      "key": "raw_material_remaining",
+      "label": "耗材剩余",
+      "value_type": "number",
+      "unit": "份",
+      "role": "stock",
+      "agg": "sum",
+      "required": false,
+      "sort": 4,
+      "legacy_column": "raw_material_remaining"
+    },
+    {
+      "key": "raw_material_waste",
+      "label": "耗材损耗",
+      "value_type": "number",
+      "unit": "份",
+      "role": "waste",
+      "agg": "sum",
+      "required": false,
+      "sort": 5,
+      "legacy_column": "raw_material_waste"
+    },
+    {
+      "key": "abnormal_notes",
+      "label": "异常备注",
+      "value_type": "text",
+      "unit": "",
+      "role": "note",
+      "agg": "none",
+      "required": false,
+      "sort": 6,
+      "legacy_column": "abnormal_notes"
+    }
+  ],
+  "formula_params": {
+    "waste_rate_threshold": 0.08
+  },
+  "files": {
+    "questions": "questions.json",
+    "scenarios": "scenarios.json",
+    "products": "products.json"
+  }
+}

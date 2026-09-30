@@ -1,0 +1,196 @@
+name: Deploy to PythonAnywhere
+
+# ── 为什么有这条工作流（2026-09-23 立）────────────────────────────────
+# 本仓原先只有 `quality-gate.yml`：push 只跑门禁、**不会上线**，线上一直靠人工跑
+# `部署/pythonanywhere/one_click_deploy.ps1`，于是「仓库已冻结」与「线上还在跑旧构建」
+# 可以长期并存（2026-09-22 / 09-23 都发生过，材料引用的线上入口与冻结代码不一致）。
+# 本工作流把上线接进 CI，形成闭环：**门禁绿 → 自动部署 → 线上探针复验（失败自动回滚）**。
+#
+# ⚠️ 位置约束：GitHub Actions 只认「仓库根」的 `.github/workflows/`。
+# 仓库根是工作区根（代码在 `iCAN大学生创新创业大赛/`），故必须放这里；
+# `iCAN大学生创新创业大赛/.github/workflows/` 下的同名文件**不会被执行**。
+#
+# 安全设计：
+# 1. `paths` 只认影响线上运行的文件（源码 / init_db / requirements / 部署脚本 / 本文件），
+#    文档与交付物提交不触发上线；
+# 2. `concurrency` 串行且不抢占（部署被打断会留半截状态）；
+# 3. 密钥缺失时**跳过而非失败**并打 warning（指向人工入口），避免 CI 变红却不知原因；
+# 4. 部署脚本自身先取回滚点（本地成功包优先，缺失则快照线上代码），验收失败自动回滚 + ALERT。
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'iCAN大学生创新创业大赛/src/**'
+      - 'iCAN大学生创新创业大赛/init_db.py'
+      - 'iCAN大学生创新创业大赛/requirements.txt'
+      - 'iCAN大学生创新创业大赛/部署/pythonanywhere/**'
+      - '.github/workflows/deploy-pa.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: ican-pa-deploy
+  cancel-in-progress: false
+
+# H31（第 18 轮）：GITHUB_TOKEN 不给 permissions 时走仓库默认（可能含写权限），
+# 本 workflow 只读代码，故显式收到最小。钉 SHA 的那条判据见 quality_gate 第 26 项。
+permissions:
+  contents: read
+
+jobs:
+  quality-gate:
+    name: 质量门禁（部署前置）
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4；升级=显式改这行（防上游 tag 移动悄悄改 CI 行为）
+
+      - name: 安装 Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5；升级=显式改这行（防上游 tag 移动悄悄改 CI 行为）
+        with:
+          python-version-file: .python-version
+          cache: pip
+
+      - name: 安装依赖
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r iCAN大学生创新创业大赛/requirements.txt
+          pip install "ruff==0.16.5"  # 钉版：与本仓全局实测同版本，防"本地绿 CI 红"的尺子漂移
+
+      - name: 准备演示数据库（CI 检出无 ican.db，需按种子重建）
+        run: python init_db.py --if-empty
+        working-directory: iCAN大学生创新创业大赛
+        env:
+          PYTHONIOENCODING: utf-8
+          SECRET_KEY: ci-test-only-not-a-real-secret
+
+      - name: 执行质量门禁（静态检查 + 冒烟 + 漏洞回归 + L4）
+        run: python quality_gate.py
+        working-directory: 交付物/提交包/工程佐证材料/05-源代码全文
+        env:
+          PYTHONIOENCODING: utf-8
+          SECRET_KEY: ci-test-only-not-a-real-secret
+
+  deploy:
+    name: 上线 PythonAnywhere
+    needs: quality-gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4；升级=显式改这行（防上游 tag 移动悄悄改 CI 行为）
+        with:
+          fetch-depth: 0   # 部署脚本要取 HEAD commit 写进证据
+
+      - name: 安装 Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5；升级=显式改这行（防上游 tag 移动悄悄改 CI 行为）
+        with:
+          python-version-file: .python-version
+
+      - name: 安装部署依赖（requests）
+        run: pip install -r iCAN大学生创新创业大赛/requirements.txt
+
+      - name: 校验部署密钥
+        id: guard
+        env:
+          PA_API_TOKEN: ${{ secrets.PA_API_TOKEN }}
+        run: |
+          if [ -z "${PA_API_TOKEN}" ]; then
+            echo "::warning::未配置 PA_API_TOKEN 仓库密钥 → 本次自动部署跳过。人工入口：部署/pythonanywhere/one_click_deploy.ps1"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: 一键部署（含上线前回滚点与失败自动回滚）
+        if: steps.guard.outputs.skip == 'false'
+        id: deploy
+        env:
+          PA_API_TOKEN: ${{ secrets.PA_API_TOKEN }}
+          PA_USERNAME: lxh123
+          PYTHONIOENCODING: utf-8
+        run: |
+          set -o pipefail
+          # 日志必须落在 output/（已 gitignore）：写仓库根会生成未跟踪文件，
+          # 让部署脚本自己的「工作树干净」守卫失败（2026-09-23 CI 首跑实测踩到）
+          mkdir -p output
+          python "iCAN大学生创新创业大赛/部署/pythonanywhere/one_click_deploy.py" 2>&1 | tee output/deploy.log
+          grep -o '\[PA-DEPLOY-PASS\].*' output/deploy.log | tail -1 > output/deploy-pass.txt || true
+
+      # 部署后新鲜度复验（2026-09-25，对标第 12 轮）：证明"push 的字节真的上线了"。
+      # 起因：本轮实测线上 style.css 61,104B/4fa0ee4ac1c2 与仓库 64,483B/66744cf1377e 不一致，
+      # 而页面 200、/healthz ok、git status 干净——**现有全部判据都看不出部署落后于仓库**，
+      # 这恰是本工作流立项要消灭的「仓库已冻结 vs 线上跑旧构建」并存。
+      # 阻断是有意的：本步只在"部署步骤刚成功"之后跑，此刻线上必等于 HEAD；不等即说明
+      # 部署静默 no-op（WSGI 未 reload / 文件未覆盖），必须让人看见而不是下次人肉发现。
+      - name: 部署后新鲜度复验：线上静态资产必须等于仓库 HEAD
+        if: steps.guard.outputs.skip == 'false'
+        run: |
+          python iCAN大学生创新创业大赛/smoke_remote.py \
+            https://lxh123.pythonanywhere.com \
+            --local-src iCAN大学生创新创业大赛 --strict-fresh
+        env:
+          PYTHONIOENCODING: utf-8
+
+      # 镜像一致性（非阻断）：Pages / CloudBase 是静态快照站，本工作流不负责更新它们。
+      # 判据从"探活 + 标记串"升级为**逐页签名比对**（对标第 13 轮）：快照每页含一次性
+      # CSRF token 与生成时间，逐字节比必假报，所以先归一动态字段再比 sha256 前 16 位。
+      # 仍不阻断：静态镜像落后不代表本次部署失败，红在部署结论上会误伤（与第 18 项
+      # "毫秒不进红线"同一判断）。重传走 iCAN大学生创新创业大赛/push_snapshot_mirror.py。
+      #
+      # 对标第 19 轮 M60：结论必须**按退出码分诊**，不得把 5 种码折成一句 warning。
+      # 工具文件头写明了 0/1/2/3/4 各自对应"一致 / 要重传 / 换网络 / 当天重建一次 /
+      # 命令写错"，而旧写法 `|| echo "::warning::不一致或不可达"` 把 1 和 2 说成同一件事
+      # —— 读到"不可达"的人会去做重传，读到"不一致"的人会去查网络，两个动作互斥。
+      # 表外返回码走 ::error::（宁吵不静默），与 push_snapshot_mirror.merge_rc() 同口径。
+      - name: 镜像快照站逐页签名比对（非阻断·按退出码分诊）
+        if: steps.guard.outputs.skip == 'false'
+        continue-on-error: true
+        run: |
+          for u in https://lxh113377.github.io/ican-demo https://qwer-d4gf2r76o8829463b-1458054906.tcloudbaseapp.com; do
+            # 用 if/else 取 rc：GitHub 的 bash 默认带 -e，裸写 `cmd; rc=$?` 会在第一个
+            # 非 0 码处直接退出 run 块，于是第二个站点根本没测。
+            if python iCAN大学生创新创业大赛/check_mirror_freshness.py "$u" \
+                 --snap-dir 交付物/提交包/工程佐证材料/05-源代码全文/演示快照集; then
+              rc=0
+            else
+              rc=$?
+            fi
+            case "$rc" in
+              0) echo "MIRROR-OK rc=0 $u" ;;
+              1) echo "::warning::MIRROR-DRIFT rc=1 $u → 内容确有漂移，处置=重传：python iCAN大学生创新创业大赛/push_snapshot_mirror.py" ;;
+              2) echo "::warning::MIRROR-NET rc=2 $u → 站点不可达，**内容一致性未验证**（既不算通过也不算漂移，处置=换网络复跑）" ;;
+              3) echo "::warning::MIRROR-STALEDATE rc=3 $u → 只差页面生成日期，内容没坏（处置=当天重建一次快照集）" ;;
+              4) echo "::error::MIRROR-USAGE rc=4 $u → 命令/参数或快照目录写错，属本工作流缺陷，不是镜像状态（禁按"重传"处置）" ;;
+              *) echo "::error::MIRROR-UNKNOWN rc=$rc $u → 工具返回了退出码表外的码，按最严重档处理并查 check_mirror_freshness.py" ;;
+            esac
+          done
+        env:
+          PYTHONIOENCODING: utf-8
+
+      - name: 写入运行摘要
+        if: always()
+        run: |
+          {
+            echo "### PythonAnywhere 自动部署"
+            if [ "${{ steps.guard.outputs.skip }}" = "true" ]; then
+              echo "- 结果：**跳过**（未配置 PA_API_TOKEN）"
+            elif [ -f deploy-pass.txt ]; then
+              echo "- 结果：**成功**"
+              echo '- `'"$(cat deploy-pass.txt)"'`'
+            else
+              echo "- 结果：**失败或未执行** —— 见本 job 日志与 \`output/pa-deploy-*.json\`；脚本会尝试自动回滚并打 \`[PA-DEPLOY-ALERT]\`"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: 归档部署证据（成功与否都留）
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4；升级=显式改这行（防上游 tag 移动悄悄改 CI 行为）
+        with:
+          name: pa-deploy-evidence
+          if-no-files-found: warn
+          retention-days: 30
+          path: |
+            output/pa-deploy-*.json
+            output/pa-live-snapshot-*.zip
+            output/deploy.log
+            output/deploy-pass.txt

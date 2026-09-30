@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}单店下钻 · 门店管理助手{% endblock %}
+{% block body_class %}is-admin{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h2>{{ detail.metrics.store_name }}</h2>
+    <span class="chip">近 {{ days }} 天 · 单店下钻</span>
+</div>
+
+<section class="panel">
+    <div class="metric-strip">
+        <div class="metric"><span class="metric-label">营收</span><strong>{{ '%.2f'|format(detail.metrics.revenue) }}</strong></div>
+        <div class="metric"><span class="metric-label">销量</span><strong>{{ detail.metrics.quantity }}</strong></div>
+        <div class="metric"><span class="metric-label">记录</span><strong>{{ detail.metrics.records }}</strong></div>
+        <div class="metric"><span class="metric-label">损耗率</span><strong>{{ '%.1f%%'|format((detail.metrics.waste_rate or 0) * 100) }}</strong></div>
+    </div>
+</section>
+
+<section class="panel">
+    <h3>热销 Top5</h3>
+    <div class="list-rows">
+        {% for p in detail.top_products %}
+        <div class="list-row"><span>{{ p.name }}</span><span>{{ p.quantity }}</span></div>
+        {% else %}
+        <p class="text-muted">本期暂无产品数据。</p>
+        {% endfor %}
+    </div>
+</section>
+
+<section class="panel">
+    <h3>日趋势</h3>
+    <div class="list-rows">
+        {% for d in detail.trend %}
+        <div class="list-row"><span>{{ d.date }}</span><span>营收 {{ '%.2f'|format(d.revenue) }} · 数量 {{ d.quantity }}</span></div>
+        {% else %}
+        <p class="text-muted">本期暂无流水数据。</p>
+        {% endfor %}
+    </div>
+    <a class="btn btn-outline btn-sm" href="{{ url_for('multi.multi_dashboard') }}">返回多店视图</a>
+</section>
+{% endblock %}

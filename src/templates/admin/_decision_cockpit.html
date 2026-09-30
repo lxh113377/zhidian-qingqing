@@ -1,0 +1,18 @@
+{% import "_icons.html" as icons %}
+<section class="decision-cockpit" id="decisionCockpit"
+         data-run-url="{{ url_for('decision.run') }}"
+         data-csrf-token="{{ csrf_token() }}"
+         data-days="{{ decision_days }}">
+    <div class="decision-head">
+        <div>
+            <h3>{{ icons.ai(20) }} AI 决策驾驶舱</h3>
+            <p class="decision-note">四角色分析、显式分歧、证据仲裁；只有人工确认后才创建任务。</p>
+        </div>
+        <button type="button" class="btn btn-outline btn-sm" id="decisionRefresh">
+            刷新决策
+        </button>
+    </div>
+    <div id="decisionCockpitInner">
+        {% include "admin/_decision_cockpit_inner.html" %}
+    </div>
+</section>

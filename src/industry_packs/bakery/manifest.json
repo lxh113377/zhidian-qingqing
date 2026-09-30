@@ -1,0 +1,29 @@
+{
+  "manifest_format": 1,
+  "pack_id": "bakery",
+  "pack_version": "1.0.0",
+  "schema_min": 1,
+  "schema_max": 1,
+  "requires": [
+    "custom_terms",
+    "dashboard_labels",
+    "decision_cockpit",
+    "free_metrics",
+    "multi_store",
+    "negotiation",
+    "pack_products",
+    "pack_scoped_unique"
+  ],
+  "vendor": "builtin",
+  "exported_at": "None",
+  "integrity": {
+    "knowledge/保质期与损耗.md": "sha256:660669f47de1b166019c509f9763d66dc50b3c477fe2fb4257f05cd37cb2fb3c",
+    "knowledge/原料与发酵.md": "sha256:a9033c28c3d8fafd8d9efad3b3bd929e99cbf27f9f9d523d51311f97874fa210",
+    "knowledge/烘烤与出品.md": "sha256:f82ab2310ddc7815bce35e86303e88eec20f96f4fad74b1c43ccf594cf1cc468",
+    "knowledge/门店服务.md": "sha256:5f9aa702a9f6a241646f9ccaab393bf599d57ae42fca5d99f8a417837e59cd5e",
+    "pack.json": "sha256:954b513a5fc44f734877c10bb3a6164a84933abeff28668b80611db19a338094",
+    "products.json": "sha256:cb1f938864d43da57ee2a0d9369c0ffdb4baf4a7964037cfa7ab0851ff50e302",
+    "questions.json": "sha256:890f738bddd548c67929df4fb75b9d4af0bcef53d1c094cbdce4b87d6e55b98c",
+    "scenarios.json": "sha256:6f8b063a6d91db44179e00f66c716b2dc0126d360c8483b9ab9205721391e5c7"
+  }
+}

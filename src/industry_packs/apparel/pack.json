@@ -1,0 +1,141 @@
+{
+  "schema_version": 1,
+  "id": "apparel",
+  "name": "服装零售店",
+  "version": "1.0.0",
+  "description": "服装零售门店行业包（含商品陈列、销售搭配、库存退换与会员复购四域）",
+  "terms": {
+    "store": "门店",
+    "record_dimension": "商品",
+    "record_dimension_plural": "商品",
+    "quantity_unit": "件",
+    "material_group": "库存情况",
+    "material_remaining": "库存剩余",
+    "material_waste": "残损件数",
+    "material_unit": "件",
+    "staff_title": "导购",
+    "customer_title": "顾客",
+    "assistant_persona": "你是服装店经营助手",
+    "analyst_persona": "你是服装店经营分析师",
+    "trainer_persona": "你是服装店培训教练",
+    "scenario_customer": "服装店顾客",
+    "report_footer": "服装店经营参考",
+    "sample_dimension": "基础白T恤",
+    "sample_shelf_question": "羊毛大衣怎么洗护？"
+  },
+  "domains": [
+    {
+      "name": "商品与陈列",
+      "knowledge_file": "商品与陈列.md",
+      "tip": "熟记尺码对照与面料特性，按「主推款前置、色系分组」陈列，保持排面整齐",
+      "keywords": ["尺码", "面料", "陈列", "吊牌"]
+    },
+    {
+      "name": "销售与搭配",
+      "knowledge_file": "销售与搭配.md",
+      "tip": "固化「观察 → 破冰 → 需求探询 → 试穿 → 连带 → 成交」流程，重点练试穿与异议处理",
+      "keywords": ["导购", "搭配", "试穿", "成交"]
+    },
+    {
+      "name": "库存与退换",
+      "knowledge_file": "库存与退换.md",
+      "tip": "坚持一物一码、日盘周清，残损单独隔离，退换政策先讲清再成交",
+      "keywords": ["库存", "盘点", "退换", "残损"]
+    },
+    {
+      "name": "会员与复购",
+      "knowledge_file": "会员与复购.md",
+      "tip": "先讲门槛与有效期再谈权益，用搭配档案与上新提醒做复购，不做骚扰式推销",
+      "keywords": ["会员", "储值", "复购", "回访"]
+    }
+  ],
+  "weak_keywords": ["尺码", "面料", "搭配", "试穿", "库存", "退换", "会员", "优惠", "陈列", "导购"],
+  "synonyms": [
+    ["衣服", "商品"],
+    ["大小", "尺码"],
+    ["试一下", "试穿"],
+    ["退货", "退换"],
+    ["便宜", "优惠"],
+    ["省钱", "优惠"],
+    ["打折", "折扣"],
+    ["怎么办", "如何"],
+    ["多少钱", "价格"],
+    ["价钱", "价格"]
+  ],
+  "metrics": [
+    {
+      "key": "product_name",
+      "label": "商品",
+      "value_type": "text",
+      "unit": "",
+      "role": "dimension",
+      "agg": "count",
+      "required": true,
+      "sort": 1,
+      "legacy_column": "product_name"
+    },
+    {
+      "key": "product_sales_qty",
+      "label": "销量",
+      "value_type": "number",
+      "unit": "件",
+      "role": "quantity",
+      "agg": "sum",
+      "required": true,
+      "sort": 2,
+      "legacy_column": "product_sales_qty"
+    },
+    {
+      "key": "total_revenue",
+      "label": "营收",
+      "value_type": "number",
+      "unit": "元",
+      "role": "amount",
+      "agg": "sum",
+      "required": true,
+      "sort": 3,
+      "legacy_column": "total_revenue"
+    },
+    {
+      "key": "raw_material_remaining",
+      "label": "库存剩余",
+      "value_type": "number",
+      "unit": "件",
+      "role": "stock",
+      "agg": "sum",
+      "required": false,
+      "sort": 4,
+      "legacy_column": "raw_material_remaining"
+    },
+    {
+      "key": "raw_material_waste",
+      "label": "残损件数",
+      "value_type": "number",
+      "unit": "件",
+      "role": "waste",
+      "agg": "sum",
+      "required": false,
+      "sort": 5,
+      "legacy_column": "raw_material_waste"
+    },
+    {
+      "key": "abnormal_notes",
+      "label": "异常备注",
+      "value_type": "text",
+      "unit": "",
+      "role": "note",
+      "agg": "none",
+      "required": false,
+      "sort": 6,
+      "legacy_column": "abnormal_notes"
+    }
+  ],
+  "formula_params": {
+    "waste_rate_threshold": 0.05
+  },
+  "files": {
+    "questions": "questions.json",
+    "scenarios": "scenarios.json",
+    "products": "products.json"
+  }
+}

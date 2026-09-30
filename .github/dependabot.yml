@@ -1,0 +1,91 @@
+# 依赖自动更新（第 32 轮恢复并首次放到仓库根 —— 见下方"为什么以前那份没生效"）
+#
+# 为什么以前那份没生效（git 取数，2026-09-27 当场实测）：
+#   `git log --all --name-only | grep dependabot` 命中三条路径，全部在**子目录**
+#   （`iCAN大学生创新创业大赛/.github/`、`05-源代码全文/.github/`、归档件），
+#   而 GitHub 只读**仓库根**的 `.github/` ⇒ 2026-09-18 加入的那份从未生效过。
+#   09-24 的处置（`9172ab7` / `c80f3e6`）是"把不存在的宣称删掉"，能力本身没补上；
+#   门禁第 46 项 ② 现在按「退役面有而根上没有 ⇒ 判红并点名"从未生效"」钉住这个区分。
+#
+# 上游对照（本轮 `gh api` 实取原文，四家全在仓库根上）：
+#   superset `.github/dependabot.yml:1-13` —— github-actions daily +
+#     `groups.security.applies-to: "security-updates"` + `cooldown.default-days: 7`；
+#   InvenTree `.github/dependabot.yml:1-19` —— weekly + `cooldown.default-days: 7` + `groups`；
+#   airflow / posthog 的 dependabot.yml 亦在根上（17 KB / 2.5 KB）。
+version: 2
+updates:
+  # 生产依赖：requirements.txt 实际所在目录（开发副本 = 权威代码，deploy-free = 无密钥部署包）
+  - package-ecosystem: "pip"
+    directory: "/iCAN大学生创新创业大赛"
+    schedule:
+      interval: "weekly"
+      day: "tuesday"
+      time: "03:00"
+      timezone: "Asia/Shanghai"
+    # 本项目 requirements 用区间钉版（`>=x,<y`）：widen = 只在需要时放宽区间，
+    # 不会把区间改成精确钉死；上界本身由门禁第 46 项 ③ 核（无上界即红）。
+    versioning: "widen"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "python"
+    cooldown:
+      default-days: 7
+    groups:
+      security:
+        applies-to: "security-updates"
+        patterns:
+          - "*"
+      minor-patch:
+        applies-to: "version-updates"
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+    # major 不自动合入：按「major 评估决策表」实测后人工决定
+    # （首个待评估项：pandas 3.x —— 本轮已实测 `dtype == 'object'` 语义变化会打穿 CSV 护栏）。
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - "version-update:semver-major"
+
+  - package-ecosystem: "pip"
+    directory: "/deploy-free"
+    schedule:
+      interval: "weekly"
+      day: "tuesday"
+      time: "03:00"
+      timezone: "Asia/Shanghai"
+    versioning: "widen"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "python"
+    cooldown:
+      default-days: 7
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - "version-update:semver-major"
+
+  # CI 自身：action 版本由门禁第 26 项钉成 40 位 SHA，故这里只开 security-updates，
+  # 让 Dependabot 的"安全更新"能 bump SHA，而普通 feature 升版仍走人工（避免 SHA 漂移无据）。
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "tuesday"
+      time: "03:00"
+      timezone: "Asia/Shanghai"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "ci"
+    cooldown:
+      default-days: 7
+    groups:
+      security:
+        applies-to: "security-updates"
+        patterns:
+          - "*"

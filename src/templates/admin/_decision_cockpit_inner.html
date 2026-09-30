@@ -1,0 +1,137 @@
+{% import "_icons.html" as icons %}
+{% set role_source_labels = {
+    'deepseek': '大模型生成',
+    'dify': '大模型生成',
+    'ai': '大模型生成',
+    'rule': '规则版',
+    'fallback': '降级规则版',
+    'not_configured': '离线规则版',
+    'error': '调用失败'
+} %}
+<div class="decision-status-bar">
+    <span class="badge {{ 'badge-success' if decision.decision.status == 'consensus' else 'badge-warning' }}">
+        {% if decision.decision.status == 'consensus' %}四角色共识
+        {% elif decision.decision.status == 'disputed' %}存在待仲裁分歧
+        {% else %}暂无可执行建议{% endif %}
+    </span>
+    <span>生成时间：{{ decision.generated_at }}</span>
+    <span>缓存：{{ '命中' if decision.cache == 'hit' else '本次生成' }}</span>
+    <span>用量：{{ decision.quota.used }}/{{ decision.quota.limit }}</span>
+    {% if decision.degraded %}
+    <span class="badge badge-warning">规则版兜底</span>
+    {% endif %}
+</div>
+{% if decision.degraded %}
+{# H8 可归因降级：文案由后端 DEGRADE_REASONS 单一真相源注入，模板只渲染不新增字面量 #}
+<p class="decision-degrade-note">
+    {% for reason in decision.degrade_text.values() | unique %}{{ reason }}{{ '；' if not loop.last }}{% endfor %}
+</p>
+{% endif %}
+<p class="decision-summary">{{ decision.decision.summary }}</p>
+
+<div class="decision-role-grid">
+    {% for role in decision.roles %}
+    <article class="decision-role decision-role--{{ role.role }}">
+        <div class="decision-role-head">
+            <strong>{{ role.label }}</strong>
+            <span class="decision-source decision-source--{{ decision.sources.get(role.role, 'rule') }}"
+                  {% if decision.degrade_text.get(role.role) %}title="{{ decision.degrade_text[role.role] }}"{% endif %}>
+                {{ role_source_labels.get(decision.sources.get(role.role, 'rule'), '规则版') }}
+            </span>
+        </div>
+        <p class="decision-role-summary">{{ role.summary }}</p>
+        {% if role.role == 'advisor' %}
+            {% for item in role.proposals %}
+            <div class="decision-item">
+                <strong>{{ item.action }}</strong>
+                <p>{{ item.rationale }}</p>
+                <span class="decision-evidence-id">{{ item.evidence_ids|join('、') }}</span>
+            </div>
+            {% endfor %}
+        {% elif role.role == 'auditor' %}
+            {% for item in role.risks %}
+            <div class="decision-item {{ 'decision-item--danger' if item.severity == 'high' else '' }}">
+                <strong>{{ item.risk }}</strong>
+                <p>{{ item.recommendation }}</p>
+                <span class="decision-evidence-id">{{ item.evidence_ids|join('、') }}</span>
+            </div>
+            {% endfor %}
+        {% else %}
+            {% for item in role.claims %}
+            <div class="decision-item">
+                <p>{{ item.text }}</p>
+                {% if item.evidence_ids %}<span class="decision-evidence-id">{{ item.evidence_ids|join('、') }}</span>{% endif %}
+            </div>
+            {% endfor %}
+        {% endif %}
+    </article>
+    {% endfor %}
+</div>
+
+{% if decision.decision.disagreements %}
+<div class="decision-disagreement">
+    <h4>{{ icons.alert(18) }} 分歧与仲裁</h4>
+    {% for item in decision.decision.disagreements %}
+    <div class="decision-item decision-item--danger">
+        <strong>{{ item.proposal.action }}</strong>
+        <p>风险审计：{{ item.risk.risk if item.risk else '需要人工复核' }}</p>
+        <span class="decision-evidence-id">{{ item.evidence_ids|join('、') }}</span>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<details class="decision-evidence">
+    <summary>证据目录（{{ decision.evidence|length }}）</summary>
+    <div class="decision-evidence-list">
+        {% for item in decision.evidence %}
+        <div><code>{{ item.id }}</code> 门店 {{ item.store_id }} · {{ item.metric }} = {{ item.value }} · {{ item.period }}</div>
+        {% endfor %}
+    </div>
+</details>
+
+{# readonly=True 时整块不渲染：只读演示入口（/demo）不得出现任何写操作入口。
+   `readonly` 未定义时（管理员驾驶舱正常包含本片段）保持原样渲染。 #}
+{% if not readonly %}
+<div class="decision-confirm">
+    <div>
+        <h4>{{ icons.lock(18) }} 人工确认转任务</h4>
+        <p>AI 不自动派发。确认后将创建来源为 <code>ai_decision</code> 的责任任务。</p>
+    </div>
+    {% if decision.decision.selected_actions and decision.evidence %}
+    <form method="post" action="{{ url_for('tasks.task_create') }}" class="decision-task-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="source" value="ai_decision">
+        <input type="hidden" name="evidence_json"
+               value="{{ decision.task_draft.evidence|tojson|forceescape }}">
+        <label>门店
+            <select name="store_id" required>
+                {% for store in task_stores %}
+                <option value="{{ store.id }}">{{ store.name }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label>负责人
+            <select name="assignee" required>
+                {% for assignee in task_assignees %}
+                <option value="{{ assignee.value }}">{{ assignee.label }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label>截止时间
+            <input type="date" name="due_date" value="{{ default_due_date }}" required>
+        </label>
+        <label class="decision-task-wide">任务标题
+            <input type="text" name="title" maxlength="120"
+                   value="{{ decision.task_draft.title }}" required>
+        </label>
+        <label class="decision-task-wide">任务说明
+            <textarea name="detail" rows="3">{{ decision.task_draft.detail }}</textarea>
+        </label>
+        <button type="submit" class="btn btn-primary btn-sm">确认创建任务</button>
+    </form>
+    {% else %}
+    <p class="decision-error">当前没有带证据的可执行建议，本轮不提供任务确认。</p>
+    {% endif %}
+</div>
+{% endif %}

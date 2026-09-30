@@ -1,0 +1,363 @@
+{% extends "base.html" %}
+{% import "_icons.html" as icons %}
+{% block title %}数据看板 · 门店管理助手{% endblock %}
+{% block body_class %}is-admin{% endblock %}
+{% block content %}
+<div class="page-header has-actions">
+    <h2>数据看板</h2>
+    <a href="{{ url_for('admin.staff_list') }}" class="btn btn-outline btn-sm">店员管理</a>
+    <a href="{{ url_for('admin.product_list') }}" class="btn btn-outline btn-sm">{{ labels.dimension }}管理</a>
+    <a href="{{ url_for('admin.quiz_list') }}" class="btn btn-outline btn-sm">考核记录</a>
+    <a href="{{ url_for('ai.assessment') }}" class="btn btn-outline btn-sm">AI考核</a>
+    <a href="{{ url_for('ai.business_analysis') }}" class="btn btn-outline btn-sm">经营分析</a>
+    <a href="{{ url_for('ai.assistant') }}" class="btn btn-outline btn-sm">AI助手</a>
+    <a href="{{ url_for('industry.pack_list') }}" class="btn btn-outline btn-sm">行业包</a>
+</div>
+
+{% if range_choices is not defined %}{% set range_choices = (7, 30, 90, 365) %}{% set range_days = 365 %}{% endif %}
+{% set range_labels = {7: '近7天', 30: '近30天', 90: '近90天', 365: '全年'} %}
+<div class="seg-bar">
+    {% for d in range_choices %}
+    <a class="seg {{ 'active' if d == range_days }}" href="{{ url_for('admin.dashboard', days=d) }}">{{ range_labels.get(d, d~'天') }}</a>
+    {% endfor %}
+    <a class="btn btn-outline btn-sm seg-export" href="{{ url_for('admin.dashboard_export', days=range_days) }}">导出 CSV</a>
+</div>
+{% include "admin/_decision_cockpit.html" %}
+
+{% if stats.has_data %}
+<p class="range-note">统计区间：{{ range_labels.get(range_days, range_days~' 天') }} · 共 {{ stats.kpi.report_days }} 个营业日</p>
+<div class="stat-cards">
+    <div class="stat-card stat-card--accent"><div class="stat-num" data-value="{{ stats.kpi.total_revenue }}">¥{{ stats.kpi.total_revenue }}</div><div class="stat-label">总营收</div></div>
+    <div class="stat-card"><div class="stat-num" data-value="{{ stats.kpi.total_qty }}">{{ stats.kpi.total_qty }}</div><div class="stat-label">总销量({{ labels.unit }})</div></div>
+    <div class="stat-card"><div class="stat-num" data-value="{{ stats.kpi.avg_daily_revenue }}">¥{{ stats.kpi.avg_daily_revenue }}</div><div class="stat-label">日均营收</div></div>
+    <div class="stat-card"><div class="stat-num" data-value="{{ stats.kpi.avg_per_unit }}">¥{{ stats.kpi.avg_per_unit }}</div><div class="stat-label">单均营收</div></div>
+    <div class="stat-card"><div class="stat-num" data-value="{{ stats.kpi.staff_count }}">{{ stats.kpi.staff_count }}</div><div class="stat-label">店员数</div></div>
+    <div class="stat-card"><div class="stat-num" data-value="{{ stats.kpi.report_days }}">{{ stats.kpi.report_days }}</div><div class="stat-label">营业天数</div></div>
+    {% if stats.kpi.gross_margin is not none %}
+    <div class="stat-card stat-card--accent"><div class="stat-num" data-value="{{ stats.kpi.gross_margin }}">{{ stats.kpi.gross_margin }}%</div><div class="stat-label">毛利率</div></div>
+    {% else %}
+    <div class="stat-card stat-card--accent"><div class="stat-num">待录入</div><div class="stat-label">毛利率<small>在{{ labels.dimension }}管理补充成本价</small></div></div>
+    {% endif %}
+    {% if stats.forecast_accuracy and stats.forecast_accuracy.ok %}
+    <div class="stat-card stat-card--accent"><div class="stat-num" data-value="{{ stats.forecast_accuracy.accuracy }}">{{ stats.forecast_accuracy.accuracy }}%</div><div class="stat-label">AI 预测准确率<small>近 {{ stats.forecast_accuracy.count }} 次回测 · 命中率 {{ stats.forecast_accuracy.hit_rate }}%</small></div></div>
+    {% else %}
+    <div class="stat-card stat-card--accent"><div class="stat-num">积累中</div><div class="stat-label">AI 预测准确率<small>每次打开看板自动记录预测并回测</small></div></div>
+    {% endif %}
+    {% for d in stats.derived_metrics or [] %}
+    {# P2 派生指标卡：按行业包角色动态增减（缺角色自动关闭，不伪造） #}
+    <div class="stat-card{{ ' stat-card--accent' if d.alert }}"><div class="stat-num" data-value="{{ d.value }}">{{ d.value }}{{ d.unit }}</div><div class="stat-label">{{ d.label }}<small>{{ d.desc }}</small></div></div>
+    {% endfor %}
+</div>
+
+<div class="section">
+    <h3>日营收 / 销量趋势</h3>
+    <div id="myChart" class="chart-box"></div>
+    <p class="sr-only">统计区间{{ range_labels.get(range_days, range_days~' 天') }}：总营收 {{ stats.kpi.total_revenue }} 元，总销量 {{ stats.kpi.total_qty }} {{ labels.unit }}，日均营收 {{ stats.kpi.avg_daily_revenue }} 元。</p>
+</div>
+
+<div class="section">
+    <h3>{{ labels.dimension }}销售占比</h3>
+    <div id="pieChart" class="chart-box"></div>
+    <p class="sr-only">{{ labels.dimension }}销售占比：{{ '、'.join(stats.pie.names[:3]) }} 等 {{ stats.pie.names|length }} 个{{ labels.dimension }}，其中 {{ stats.pie.names[0] if stats.pie.names else '—' }} 占比最高。</p>
+</div>
+
+<div class="section">
+    <h3>热销排行（按营收）</h3>
+    <div id="topChart" class="chart-box"></div>
+    <p class="sr-only">热销排行：按营收由高到低，{{ '、'.join(stats.top.names[:3]) if stats.top.names else '暂无热销数据' }}。</p>
+</div>
+
+{% if stats.waste_alerts %}
+{# 长列表密度治理（V4）：>5 条默认折叠，仅最新一条保留呼吸提示；无 JS 由 noscript 全量兜底 #}
+<div class="section">
+    <h3>{{ labels.waste }}异常提醒（{{ stats.waste_alert_total or stats.waste_alerts|length }}）</h3>
+    <div class="record-list{{ ' is-collapsed' if stats.waste_alerts|length > 5 }}" id="wasteList" data-collapse-list>
+        {% for a in stats.waste_alerts %}
+        <div class="record-item{{ ' alert-pulse' if loop.first }}">
+            <div class="record-header">
+                <span class="product-name">{{ a.product }}</span>
+                <span class="badge badge-danger">{{ a.date }}</span>
+            </div>
+            <div class="record-note">{{ icons.alert(14) }} {{ a.note }}</div>
+            {% if a.cause_label %}
+            <div class="record-note neutral">AI 归因（仅供参考）：{{ a.cause_label }}{% if a.confidence %} · 置信度{{ a.confidence }}{% endif %} — {{ a.advice }}</div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% if stats.waste_alerts|length > 5 %}
+    <button type="button" class="btn btn-outline btn-sm btn-block list-toggle" hidden
+            data-collapse-toggle="wasteList" aria-controls="wasteList" aria-expanded="false"
+            data-label-more="展开全部 {{ stats.waste_alerts|length }} 条提醒"
+            data-label-less="收起（只看最新 5 条）">展开全部 {{ stats.waste_alerts|length }} 条提醒</button>
+    {% endif %}
+</div>
+{% endif %}
+
+{% else %}
+<div class="empty-state">
+    <span class="empty-icon">{{ icons.chart(44) }}</span>
+    <p>暂无营业数据，请让店员在 H5 端提交后查看看板。</p>
+</div>
+{% endif %}
+
+{% if ai_advice or ai_loss %}
+{# AI 只输出参考建议：仅 source 为 dify/rule 的内容才作为建议展示；
+   其余（dify-error 等异常态）一律降级为「服务暂不可用」提示，
+   绝不把 AI 异常串当成正常经营建议渲染给老板（F38）#}
+{% set ok_sources = ['dify', 'rule'] %}
+{% set ai_degraded = (ai_advice and ai_advice.source not in ok_sources)
+                     or (ai_loss and ai_loss.source not in ok_sources) %}
+<div class="ai-box">
+    <h4>{{ icons.ai(22) }} AI 经营建议（仅供参考，最终决策请由店主判断）
+        {% if ai_degraded %}<span class="badge badge-danger">{{ degraded_badge }}</span>
+        {% elif not dify_enabled %}<span class="badge badge-warning">演示模式</span>
+        {% else %}<span class="badge badge-success">Dify 已接入</span>{% endif %}
+    </h4>
+    {% if ai_advice %}
+    <div class="ai-card">
+        <div class="ai-title">{{ icons.package(18) }} 备货建议</div>
+        {% if ai_advice.source in ok_sources %}
+        <p class="ai-text">{{ ai_advice.content }}</p>
+        {% else %}
+        <p class="ai-text">{{ icons.alert(16) }} {{ degraded_text }}本条备货建议本次未能生成，可依据上方看板数据自行判断。</p>
+        {% endif %}
+    </div>
+    {% endif %}
+    {% if ai_loss %}
+    <div class="ai-card">
+        <div class="ai-title">{{ icons.alert(18) }} {{ labels.waste }}提醒</div>
+        {% if ai_loss.source in ok_sources %}
+        <p class="ai-text">{{ ai_loss.content }}</p>
+        {% else %}
+        <p class="ai-text">{{ icons.alert(16) }} {{ degraded_text }}本条{{ labels.waste }}提醒本次未能生成，可查看上方「{{ labels.waste }}异常提醒」原始记录。</p>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{# echarts 引擎改由 base.html 的 withEcharts() 按需加载（604KB 不再阻塞首屏） #}
+<script src="{{ asset_url('js/decision_cockpit.js') }}"></script>
+<script>
+{% if stats.has_data %}
+var stats = {{ stats | tojson }};
+var rangeDays = {{ range_days | tojson }};
+function fmtMoney(v) {
+    return '¥' + Number(v).toLocaleString('zh-CN', { maximumFractionDigits: 2 });
+}
+// 品牌色统一来源：读 style.css 区块1 的 CSS 变量，主题切换重绘时自动跟随（去硬编码）
+function cssVar(name, fallback) {
+    var v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    return v || fallback;
+}
+function hexToRgb(hex) {
+    var h = hex.replace('#', '');
+    if (h.length === 3) h = h.split('').map(function (c) { return c + c; }).join('');
+    var n = parseInt(h, 16);
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+function rgba(hex, alpha) {
+    var c = hexToRgb(hex);
+    return 'rgba(' + c[0] + ',' + c[1] + ',' + c[2] + ',' + alpha + ')';
+}
+// 图表主题工厂（V4）：轴/网格/图例/提示/滑块一处产出，暗色自动降对比
+function isDarkTheme() {
+    return document.documentElement.dataset.theme === 'dark' ||
+           (!document.documentElement.dataset.theme && window.matchMedia('(prefers-color-scheme: dark)').matches);
+}
+function chartTheme() {
+    var dark = isDarkTheme();
+    return {
+        dark: dark,
+        // 分类色板与网格/轴线全部读 CSS 令牌（--chart-1..6 / --chart-split / --chart-axis）
+        palette: [1, 2, 3, 4, 5, 6].map(function (i) { return cssVar('--chart-' + i, '#0F766E'); }),
+        bg: cssVar('--card-bg', dark ? '#12211F' : '#fff'),
+        border: cssVar('--border', dark ? '#1E3A34' : '#E3E8E6'),
+        text: cssVar('--text', dark ? '#E4EBE9' : '#16211F'),
+        sub: cssVar('--text-light', dark ? '#8CA09B' : '#5B6B67'),
+        split: cssVar('--chart-split', 'rgba(128,128,128,.12)'),
+        axis: cssVar('--chart-axis', 'rgba(128,128,128,.30)')
+    };
+}
+function renderCharts() {
+    var t = chartTheme();
+    var PRIMARY = t.palette[0];
+    var tip = { backgroundColor: t.bg, borderColor: t.border, textStyle: { color: t.text } };
+    var chart = echarts.getInstanceByDom(document.getElementById('myChart')) ||
+                echarts.init(document.getElementById('myChart'));
+    chart.setOption({
+        color: t.palette,
+        grid: { left: 8, right: 10, top: 44, bottom: 6, containLabel: true },
+        tooltip: {
+            trigger: 'axis',
+            backgroundColor: tip.backgroundColor, borderColor: tip.borderColor, textStyle: tip.textStyle,
+            // 双 Y 轴：按 seriesIndex 区分营收(0)→¥千分位 / 销量(1)→整数千分位
+            formatter: function (params) {
+                var s = params[0].axisValue;
+                params.forEach(function (p) {
+                    var v = p.seriesIndex === 0
+                        ? fmtMoney(p.value)
+                        : Number(p.value).toLocaleString('zh-CN');
+                    s += '<br/>' + p.marker + p.seriesName + ': ' + v;
+                });
+                return s;
+            }
+        },
+        legend: { data: ['营收(元)', '销量({{ labels.unit }})'], textStyle: { color: t.sub }, icon: 'roundRect', itemWidth: 12, itemHeight: 8 },
+        xAxis: {
+            type: 'category', data: stats.daily.dates,
+            axisLabel: { color: t.sub }, axisTick: { show: false },
+            axisLine: { lineStyle: { color: t.axis } }, splitLine: { show: false }
+        },
+        yAxis: [
+            { type: 'value', name: '营收 ', nameTextStyle: { color: t.sub },
+              axisLabel: { color: t.sub }, axisTick: { show: false }, axisLine: { show: false },
+              splitLine: { lineStyle: { color: t.split } } },
+            { type: 'value', name: '销量 ', nameTextStyle: { color: t.sub },
+              axisLabel: { color: t.sub }, axisTick: { show: false }, axisLine: { show: false },
+              splitLine: { show: false } }
+        ],
+        series: [
+            { name: '营收(元)', type: 'line', smooth: true, showSymbol: false, data: stats.daily.revenue,
+              lineStyle: { width: 3, color: PRIMARY },
+              itemStyle: { color: PRIMARY },
+              areaStyle: { color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
+                  colorStops: [{ offset: 0, color: rgba(PRIMARY, t.dark ? 0.45 : 0.25) },
+                               { offset: 1, color: rgba(PRIMARY, 0) }] } } },
+            { name: '销量({{ labels.unit }})', type: 'bar', yAxisIndex: 1, data: stats.daily.qty,
+              itemStyle: { color: t.palette[1], borderRadius: [4, 4, 0, 0] } }
+        ],
+        dataZoom: (rangeDays === 90 || rangeDays === 365)
+            ? [{ type: 'inside' },
+               { type: 'slider', height: 18, bottom: 2,
+                 borderColor: t.border, backgroundColor: 'transparent',
+                 fillerColor: rgba(PRIMARY, .12), handleStyle: { color: PRIMARY },
+                 moveHandleStyle: { color: PRIMARY }, textStyle: { color: t.sub },
+                 dataBackground: { lineStyle: { color: t.split }, areaStyle: { color: t.split } } }]
+            : undefined
+    });
+
+    var totalQty = stats.pie.values.reduce(function (a, b) { return a + b; }, 0) || 0;
+    var pie = echarts.getInstanceByDom(document.getElementById('pieChart')) ||
+              echarts.init(document.getElementById('pieChart'));
+    pie.setOption({
+        color: t.palette,
+        tooltip: { trigger: 'item', formatter: '{b}: {c} {{ labels.unit }} ({d}%)',
+                   backgroundColor: tip.backgroundColor, borderColor: tip.borderColor, textStyle: tip.textStyle },
+        legend: { bottom: 0, textStyle: { color: t.sub }, icon: 'circle', itemWidth: 8, itemHeight: 8 },
+        graphic: [{
+            type: 'text', left: 'center', top: '40%',
+            style: { text: '总销量\n' + totalQty.toLocaleString('zh-CN') + ' {{ labels.unit }}', textAlign: 'center',
+                     fill: t.sub, fontSize: 12, lineHeight: 18 }
+        }],
+        series: [{
+            type: 'pie', radius: ['45%', '65%'], center: ['50%', '44%'],
+            label: { color: t.sub },
+            itemStyle: { borderRadius: 6, borderColor: t.bg, borderWidth: 2 },
+            data: stats.pie.names.map(function (n, i) { return { name: n, value: stats.pie.values[i] }; })
+        }]
+    });
+
+    var top = echarts.getInstanceByDom(document.getElementById('topChart')) ||
+              echarts.init(document.getElementById('topChart'));
+    top.setOption({
+        color: t.palette,
+        grid: { left: 8, right: 18, top: 14, bottom: 6, containLabel: true },
+        tooltip: { trigger: 'axis', valueFormatter: function (v) { return fmtMoney(v); },
+                   backgroundColor: tip.backgroundColor, borderColor: tip.borderColor, textStyle: tip.textStyle },
+        xAxis: { type: 'value', axisLabel: { color: t.sub }, axisTick: { show: false },
+                 axisLine: { show: false }, splitLine: { lineStyle: { color: t.split } } },
+        yAxis: { type: 'category', data: stats.top.names.slice().reverse(),
+                 axisLabel: { color: t.sub }, axisTick: { show: false },
+                 axisLine: { lineStyle: { color: t.axis } } },
+        series: [{
+            type: 'bar', data: stats.top.values.slice().reverse(),
+            barWidth: '60%',
+            itemStyle: {
+                borderRadius: [0, 6, 6, 0],
+                color: { type: 'linear', x: 0, y: 0, x2: 1, y2: 0,
+                    colorStops: [{ offset: 0, color: rgba(PRIMARY, t.dark ? .5 : .55) }, { offset: 1, color: PRIMARY }] }
+            }
+        }]
+    });
+
+    chart.resize(); pie.resize(); top.resize();
+}
+// ── 图表按需渲染（性能 P0-2）：容器进入视口才拉 604KB 引擎 ──
+// 无 IntersectionObserver（老内核）时立即加载，保证功能不丢。
+(function () {
+    var ids = ['myChart', 'pieChart', 'topChart'];
+    var boxes = ids.map(function (id) { return document.getElementById(id); }).filter(Boolean);
+    var started = false;
+    function start() {
+        if (started) return;
+        started = true;
+        window.withEcharts(renderCharts);
+    }
+    if (!boxes.length || !('IntersectionObserver' in window)) { start(); return; }
+    // rootMargin 提前 200px 预取：滚动到图表之前引擎基本已就绪，避免看到空框
+    var io = new IntersectionObserver(function (entries) {
+        if (entries.some(function (e) { return e.isIntersecting; })) {
+            io.disconnect();
+            start();
+        }
+    }, { rootMargin: '200px' });
+    boxes.forEach(function (b) { io.observe(b); });
+})();
+window.addEventListener('resize', function () {
+    // 引擎尚未按需加载时直接跳过，避免 undefined 报错
+    if (!window.echarts || typeof window.echarts.init !== 'function') return;
+    ['myChart', 'pieChart', 'topChart'].forEach(function (id) {
+        var c = echarts.getInstanceByDom(document.getElementById(id));
+        if (c) c.resize();
+    });
+});
+// 主题即时切换（无整页 reload）后重绘，让坐标轴/tooltip 读最新计算样式
+// （引擎未加载时 withEcharts 会先加载再重绘）
+document.addEventListener('ichart-theme', function () { window.withEcharts(renderCharts); });
+
+// KPI 数值 count-up（easeOutCubic，尊重减少动态偏好；data-value 由模板注入）
+(function () {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    function fmt(v, orig) {
+        var dec = orig.indexOf('.') > -1 ? 2 : 0;
+        var s = Number(v).toLocaleString('zh-CN', { minimumFractionDigits: dec, maximumFractionDigits: dec });
+        return orig.indexOf('¥') > -1 ? '¥' + s : (orig.indexOf('%') > -1 ? s + '%' : s);
+    }
+    document.querySelectorAll('.stat-num[data-value]').forEach(function (el) {
+        var target = parseFloat(el.dataset.value);
+        if (isNaN(target)) return;
+        var orig = el.textContent;
+        var dur = 1100, t0 = null;
+        function step(ts) {
+            if (!t0) t0 = ts;
+            var p = Math.min((ts - t0) / dur, 1);
+            el.textContent = fmt(target * (1 - Math.pow(1 - p, 3)), orig);
+            if (p < 1) requestAnimationFrame(step);
+        }
+        requestAnimationFrame(step);
+    });
+})();
+
+// CSV 导出 loading 反馈：点击后短暂 loading，避免无反馈/重复点击
+(function () {
+    var btn = document.querySelector('a.seg-export');
+    if (!btn) return;
+    btn.addEventListener('click', function () {
+        var origin = btn.textContent;
+        btn.textContent = '导出中…';
+        btn.classList.add('loading');
+        btn.style.pointerEvents = 'none';
+        setTimeout(function () {
+            btn.textContent = origin;
+            btn.classList.remove('loading');
+            btn.style.pointerEvents = '';
+        }, 1500);
+    });
+})();
+{% endif %}
+</script>
+{% endblock %}

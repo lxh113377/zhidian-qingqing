@@ -1,0 +1,46 @@
+# 行尾策略（2026-09-25 对标第 18 轮，实测驱动）
+#
+# 为什么必须有这个文件：门禁第 10/27/29 项比较的是**原始字节 SHA256**，而本机
+# `core.autocrlf=true`、CI（Linux runner）默认 false ⇒ 同一个 blob 在两边检出的字节不同。
+# 实测受影响 267 个跟踪文件（其中权威副本 57 个）——发布台账在本机算出的哈希，
+# 别人 clone 后 `sha256sum` 复算不出来，第 29 项在 CI 上必红。写死策略后：
+# 仓库内统一 LF、检出统一 LF，跨平台逐字节一致，台账才是可复算的。
+* text=auto eol=lf
+
+# 本文件同时以**副本内一份**的形态存在于三处交付副本根（`iCAN大学生创新创业大赛/`、
+# `deploy-free/`、`05-源代码全文/`）：Release ZIP 解压后没有 `.git`，门禁第 30 项
+# 需要靠副本自带的这份策略才能继续判"行尾是否合规"，而不是静默跳过（L4 S19 的
+# 「解压态」三条断言钉住这一点）。
+
+# Windows 批处理在检出时必须是 CRLF。实测：`部署/pythonanywhere/one_click_deploy.cmd`
+# 在工作树与 blob 两侧都是 **LF**（114 字节，本机 autocrlf=true 却在 add 时被归一化掉了），
+# 交付到 Windows 用户手上就是一个纯 LF 的 .cmd——cmd.exe 对无 CR 的批处理解析不稳定，
+# 显式钉 eol=crlf 后仓库仍存 LF、检出即 CRLF，两边各得其所。
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
+# 二进制不参与任何转换（含 \r\n 字节的图片/PDF/Office 文档会被上面的规则误伤）
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.docx binary
+*.xlsx binary
+*.pptx binary
+*.zip binary
+*.gz binary
+*.db binary
+*.sqlite binary
+*.bundle binary
+*.mp4 binary
+*.mov binary
+*.webm binary
+*.mp3 binary
+*.wav binary
+*.pyc binary
+*.whl binary
+*.ttf binary
+*.woff binary
+*.woff2 binary

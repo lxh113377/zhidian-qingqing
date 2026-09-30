@@ -1,0 +1,29 @@
+{
+  "manifest_format": 1,
+  "pack_id": "milk_tea",
+  "pack_version": "1.0.0",
+  "schema_min": 1,
+  "schema_max": 1,
+  "requires": [
+    "custom_terms",
+    "dashboard_labels",
+    "decision_cockpit",
+    "free_metrics",
+    "multi_store",
+    "negotiation",
+    "pack_products",
+    "pack_scoped_unique"
+  ],
+  "vendor": "builtin",
+  "exported_at": "None",
+  "integrity": {
+    "knowledge/原料规范.md": "sha256:206b9159f8518f1bb11b2ab24ca4203156faa685fafd8b968c7d5fb6058b1d75",
+    "knowledge/套餐价格.md": "sha256:20f9ba966fe76cc05583efa49ac9c82a82b1e33455cb43afe2e4c572d631a89d",
+    "knowledge/异议处理.md": "sha256:097426015169e8383c93eda2a0c9d29983d4eb7ce2a78ac5f9b19f370bfd5267",
+    "knowledge/服务话术.md": "sha256:33ea8daf94a86c54b5bc149e682f8188b549c1f8f9e866454fa8791f6da18a39",
+    "pack.json": "sha256:dc25c69c84ed93c86d4ba7b64c6901abe6a2a7df299b0f3fd64d754cad0bee89",
+    "products.json": "sha256:6babbaf7f801739b16e153ed7a178c6dbbd7e124e7c22c6552c8507340891fc9",
+    "questions.json": "sha256:d6ccc2bca96b47d81649f6f44e392844797e82d30c66eeaf7dfce2ac70610933",
+    "scenarios.json": "sha256:7ba4997df57e92dcc30a5b9e02d508fe893de4f5f4072443efd30f08420e3cc5"
+  }
+}

@@ -1,0 +1,17 @@
+[
+  {"product_name": "红富士苹果", "unit_price": 6.8, "cost_price": 3.5, "category": "水果"},
+  {"product_name": "香蕉", "unit_price": 4.5, "cost_price": 2.8, "category": "水果"},
+  {"product_name": "巨峰葡萄", "unit_price": 9.9, "cost_price": 6.5, "category": "水果"},
+  {"product_name": "草莓", "unit_price": 19.9, "cost_price": 13.0, "category": "水果"},
+  {"product_name": "冰糖西瓜", "unit_price": 2.99, "cost_price": 1.6, "category": "水果"},
+  {"product_name": "鲜切果盒", "unit_price": 12.0, "cost_price": null, "category": "鲜切"},
+  {"product_name": "阳光玫瑰葡萄", "unit_price": 15.8, "cost_price": 10.5, "category": "水果"},
+  {"product_name": "赣南脐橙", "unit_price": 5.98, "cost_price": 3.6, "category": "水果"},
+  {"product_name": "沃柑", "unit_price": 4.98, "cost_price": 3.0, "category": "水果"},
+  {"product_name": "红心火龙果", "unit_price": 7.8, "cost_price": 4.6, "category": "水果"},
+  {"product_name": "芒果", "unit_price": 8.8, "cost_price": 5.2, "category": "水果"},
+  {"product_name": "蓝莓(盒)", "unit_price": 15.9, "cost_price": 10.8, "category": "水果"},
+  {"product_name": "麒麟瓜(半只)", "unit_price": 3.2, "cost_price": 1.8, "category": "水果"},
+  {"product_name": "混合果切", "unit_price": 15.0, "cost_price": null, "category": "鲜切"},
+  {"product_name": "车厘子(小盒)", "unit_price": 29.9, "cost_price": 21.0, "category": "水果"}
+]

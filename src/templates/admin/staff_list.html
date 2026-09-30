@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% import "_icons.html" as icons %}
+{% block title %}店员账号管理 · 门店管理助手{% endblock %}
+{% block body_class %}is-admin{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h2>店员账号管理</h2>
+    <a href="{{ url_for('admin.staff_add') }}" class="btn btn-primary btn-sm">+ 新增店员</a>
+</div>
+
+<div class="staff-grid">
+    {% for s in staffs %}
+    <div class="staff-card {{ 'inactive' if not s.is_active }}">
+        <div class="record-header">
+            <strong>{{ s.display_name }}</strong>
+            <span class="status {{ 'active' if s.is_active else 'inactive' }}">{{ '启用' if s.is_active else '停用' }}</span>
+        </div>
+        <small>账号：{{ s.username }}</small>
+        <small>电话：{{ s.phone or '—' }}</small>
+        <small>门店：{{ s.store_name }}</small>
+        {# 状态变更是写操作：必须 POST + CSRF token，禁止裸 <a href> 触发 #}
+        <form method="POST" action="{{ url_for('admin.staff_toggle', staff_id=s.id) }}" class="mt-8">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            {# 客户端主张"我看到的值" ⇒ 服务端 CAS 更新，别人先改过就拒我这一下 #}
+            <input type="hidden" name="expect_active" value="{{ '1' if s.is_active else '0' }}">
+            <button type="submit" class="btn btn-outline btn-sm">{{ '停用' if s.is_active else '启用' }}</button>
+        </form>
+        <form method="POST" action="{{ url_for('admin.staff_reset_password', staff_id=s.id) }}" class="mt-8 inline-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="password" name="password" class="form-control" placeholder="重置密码（≥8位，含字母和数字）" required>
+            <button type="submit" class="btn btn-outline btn-sm">重置密码</button>
+        </form>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <span class="empty-icon">{{ icons.staff(44) }}</span>
+        <p>还没有店员账号，先「新增店员」添加第一个吧。</p>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

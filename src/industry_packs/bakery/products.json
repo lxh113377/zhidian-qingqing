@@ -1,0 +1,17 @@
+[
+  {"product_name": "全麦吐司", "unit_price": 12.0, "cost_price": 4.2, "category": "吐司"},
+  {"product_name": "原味可颂", "unit_price": 9.0, "cost_price": 3.4, "category": "起酥"},
+  {"product_name": "盐可颂", "unit_price": 8.0, "cost_price": 3.0, "category": "起酥"},
+  {"product_name": "红豆面包", "unit_price": 7.5, "cost_price": 2.8, "category": "甜面包"},
+  {"product_name": "奶油蛋糕卷", "unit_price": 22.0, "cost_price": 9.5, "category": "蛋糕"},
+  {"product_name": "芝士贝果", "unit_price": 10.0, "cost_price": 4.0, "category": "贝果"},
+  {"product_name": "提拉米苏(杯)", "unit_price": 18.0, "cost_price": 7.2, "category": "甜品"},
+  {"product_name": "蛋挞", "unit_price": 6.0, "cost_price": 2.2, "category": "挞类"},
+  {"product_name": "核桃欧包", "unit_price": 16.0, "cost_price": 6.5, "category": "欧包"},
+  {"product_name": "火腿三明治", "unit_price": 12.0, "cost_price": 5.0, "category": "轻食"},
+  {"product_name": "手作曲奇(袋)", "unit_price": 15.0, "cost_price": 5.6, "category": "饼干"},
+  {"product_name": "舒芙蕾", "unit_price": 20.0, "cost_price": 7.8, "category": "甜品"},
+  {"product_name": "碱水结", "unit_price": 8.5, "cost_price": 3.2, "category": "欧包"},
+  {"product_name": "巴斯克蛋糕(块)", "unit_price": 26.0, "cost_price": 10.5, "category": "蛋糕"},
+  {"product_name": "冰美式", "unit_price": 12.0, "cost_price": 3.0, "category": "饮品"}
+]

@@ -1,0 +1,25 @@
+name: 安全问题的最小报告入口
+description: 只做"如何联系与维护者接触"的结构化引导；完整流程以 SECURITY.md 为准，本模板不复制其条款
+labels: ["security"]
+body:
+  - type: markdown
+    value: |
+      **先读 `SECURITY.md`。** 本模板只提供结构化入口，规则与承诺的唯一真相源仍是 `SECURITY.md`。
+  - type: markdown
+    id: boundary
+    attributes:
+      value: |
+      - 不要在这里提交真实商家数据、真实密钥或可直接用于入侵线上系统的完整利用链。
+      - 本项目红线：禁止跨商家访问；商家业务明细不得暴露给平台管理员（复现请只用演示租户）。
+  - type: textarea
+    id: class
+    attributes:
+      label: 问题类别（勾选式描述）
+      description: 越权/跨租户、CSRF 或会话、限流绕过、敏感信息外泄（堆栈/日志/交付物）、依赖漏洞
+    validations:
+      required: true
+  - type: textarea
+    id: impact
+    attributes:
+      label: 影响面与可验证的修复判据
+      description: 说明"哪条守卫该拦住它"——若现在没有任何守卫拦得住，请明说，这本身就是要登记的面（第 28 项与 test_vuln_regression 的覆盖面）

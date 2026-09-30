@@ -1,0 +1,57 @@
+# iCAN 依赖契约（2026-09-24 第 7 轮 H7 改造）
+#
+# 为什么不再是逐个 `==` 硬钉：实测 10 个钉版里有 6 个与**项目自己的测试解释器**
+# （.workbuddy/binaries/python/envs/ican，Python 3.13.14）不一致，而生产
+# PythonAnywhere 用平台预装版本、根本不读本文件（见 部署/README.md）。
+# 也就是说旧的 `==` 描述的是一个没有任何环境真正使用的配置 —— 假锁版。
+#
+# 现在每个区间的两端都必须是**实际存在且被验证过的环境版本**：
+#   dev/CI  = 项目 venv（本次实测值，见下表括号内 dev）
+#   prod    = PythonAnywhere 平台预装（见 部署/README.md，下表括号内 pa）
+#   未安装 waitress/pymysql 属正常：二者只在 PA / Docker 侧需要，本机不跑。
+#
+#   包                 dev 实测        pa 预装      本文件区间
+#   Flask              3.1.3           3.0.3        >=3.0.3,<3.2
+#   Flask-SQLAlchemy   3.1.1           3.1.1        ==3.1.1
+#   Flask-Login        0.6.3           0.6.3        ==0.6.3
+#   Flask-WTF          1.3.0           未核         >=1.2.1,<1.4
+#   WTForms            3.2.2           未核         >=3.1.1,<4
+#   pandas             3.0.3           2.2.2        >=2.2,<4
+#   requests           2.34.2          未核         >=2.31,<3
+#   python-dotenv      1.2.2           未核         >=1.0,<2
+#   pymysql            未安装          需要         >=1.1,<2
+#   waitress           未安装          3.0.x        >=3.0,<4
+#   PyYAML             6.0.3（门禁）   不需要       >=6.0,<7
+#
+# 「pa 未核」的项只放宽上界、不收紧下界，避免把没验证过的版本写成一个谎言。
+# 该矩阵由 test_l4_assertions.py 的「依赖契约」断言做机器校验（CI 装完即验）。
+
+Flask>=3.0.3,<3.2
+Flask-SQLAlchemy==3.1.1
+Flask-Login==0.6.3
+Flask-WTF>=1.2.1,<1.4
+WTForms>=3.1.1,<4
+# 看板图表由前端本地 src/static/js/echarts.custom.js 渲染（台账见仓库根 VENDOR-ASSETS.json 与门禁第 27 项）
+pandas>=2.2,<4
+requests>=2.31,<3
+python-dotenv>=1.0,<2
+# ── 生产部署（PythonAnywhere / MySQL + waitress）──
+pymysql>=1.1,<2
+waitress>=3.0,<4
+# ── 测试覆盖率（可选，run_coverage.py 依赖）──
+coverage>=7.0,<9
+# ── 业务日切（第 29 轮 src/business_calendar.py）──
+# Windows 与 PythonAnywhere 都没有系统 IANA 时区库，`zoneinfo.ZoneInfo('Asia/Shanghai')`
+# 在缺 tzdata 时会 ZoneInfoNotFoundError ⇒ 代码有"显式固定偏移"降级路径，但生产应走主路径：
+# 装 tzdata 让 /healthz 的 calendar.resolved_via 停在 zoneinfo，而不是长期靠降级跑。
+tzdata>=2024.1,<2027
+# 处置通道的跨进程独占锁（restore_db.disposition_lock，第 40 轮 M120）。
+# 只在函数体内延迟导入：init_db.py 在函数里 import restore_db，顶层导入会把新依赖
+# 拖进 PythonAnywhere 的启动路径；线上不跑 --dispose 就不需要它，但声明必须诚实。
+filelock>=4.0,<5
+# ── 门禁自身依赖（第 32 轮补声明；非应用运行时）──
+# quality_gate.py 的第 33/34/46 项要用 PyYAML **严格**解析 openapi.yaml / dependabot.yml
+# （重复键必须抛错，手写解析器测不出这一面），缺包时那三项一起退化成"判没测到"。
+# 2026-09-27 实测：本机 .venv 无 PyYAML 而本文件从未声明 ⇒ 三次门禁运行当场作废；
+# 门禁第 46 项 ⑤ 现在按「门禁自己 import 的第三方包必须在本契约内」钉住这类失明。
+PyYAML>=6.0,<7

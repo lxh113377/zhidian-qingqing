@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% import "_icons.html" as icons %}
+{% block title %}AI 考核管理 · 门店管理助手{% endblock %}
+{% block body_class %}is-admin{% endblock %}
+{% block content %}
+<div class="page-header">
+    <a href="{{ url_for('admin.dashboard') }}" class="btn-back">← 返回看板</a>
+    <h2>AI 考核管理</h2>
+</div>
+
+{% if result %}
+<div class="staff-grid">
+    {% for item in result %}
+    <div class="staff-card">
+        <div class="record-header">
+            <strong>{{ item.staff.display_name }}</strong>
+            <span class="badge badge-{{ 'success' if item.avg>=60 else 'danger' }}">均分 {{ item.avg }}</span>
+        </div>
+        <small>考核 {{ item.total }} 题 · 错题 {{ item.wrong }} 题</small>
+        {% if item.weak %}
+        <small>薄弱：{{ item.weak[0][0] }}{% if item.weak|length>1 %} 等{% endif %}</small>
+        {% else %}
+        <small>知识掌握均衡</small>
+        {% endif %}
+        <a href="{{ url_for('ai.assessment_detail', staff_id=item.staff.id) }}" class="btn btn-outline btn-sm mt-8">查看明细</a>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+    <span class="empty-icon">{{ icons.quiz(44) }}</span>
+    <p>还没有可汇总的考核数据，先让店员完成考核，再看这里的均分与薄弱点。</p>
+</div>
+{% endif %}
+{% endblock %}

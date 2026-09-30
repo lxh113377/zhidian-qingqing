@@ -1,0 +1,141 @@
+{
+  "schema_version": 1,
+  "id": "beauty",
+  "name": "美容美发/美甲店",
+  "version": "1.0.0",
+  "description": "美发美甲与生活美容门店行业包（含服务流程、卫生消毒、安全过敏与会员业绩四域）",
+  "terms": {
+    "store": "门店",
+    "record_dimension": "服务项目",
+    "record_dimension_plural": "服务项目",
+    "quantity_unit": "人次",
+    "material_group": "耗材情况",
+    "material_remaining": "耗材剩余",
+    "material_waste": "耗材损耗",
+    "material_unit": "份",
+    "staff_title": "技师",
+    "customer_title": "顾客",
+    "assistant_persona": "你是美业门店经营助手",
+    "analyst_persona": "你是美业门店经营分析师",
+    "trainer_persona": "你是美业门店培训教练",
+    "scenario_customer": "美业门店顾客",
+    "report_footer": "美业门店经营参考",
+    "sample_dimension": "洗剪吹",
+    "sample_shelf_question": "烫发前为什么要做过敏测试？"
+  },
+  "domains": [
+    {
+      "name": "服务流程",
+      "knowledge_file": "服务流程.md",
+      "tip": "固化「沟通确认 → 操作 → 检查 → 交付」四段流程，重点练习需求确认与不满意复修",
+      "keywords": ["服务", "流程", "沟通", "复修"]
+    },
+    {
+      "name": "卫生与消毒",
+      "knowledge_file": "卫生与消毒.md",
+      "tip": "牢记器具与毛巾的消毒方式、频次与记录要求，一次性用品不重复使用",
+      "keywords": ["消毒", "卫生", "毛巾", "一次性"]
+    },
+    {
+      "name": "安全与过敏",
+      "knowledge_file": "安全与过敏.md",
+      "tip": "烫染前必做发质与皮肤评估，异常立即停止操作并上报，绝不冒险施工",
+      "keywords": ["过敏", "安全", "测试", "皮肤"]
+    },
+    {
+      "name": "会员与业绩",
+      "knowledge_file": "会员与业绩.md",
+      "tip": "先说明门槛与有效期再谈权益，用项目体验带动复购，不做过度推销",
+      "keywords": ["会员", "储值", "办卡", "复购"]
+    }
+  ],
+  "weak_keywords": ["服务", "流程", "消毒", "卫生", "过敏", "安全", "会员", "储值", "价格", "预约"],
+  "synonyms": [
+    ["便宜", "优惠"],
+    ["省钱", "优惠"],
+    ["折扣", "优惠"],
+    ["剪发", "理发"],
+    ["染发", "上色"],
+    ["敏感", "过敏"],
+    ["办卡", "会员"],
+    ["预约", "预订"],
+    ["多少钱", "价格"],
+    ["保存", "储存"]
+  ],
+  "metrics": [
+    {
+      "key": "product_name",
+      "label": "服务项目",
+      "value_type": "text",
+      "unit": "",
+      "role": "dimension",
+      "agg": "count",
+      "required": true,
+      "sort": 1,
+      "legacy_column": "product_name"
+    },
+    {
+      "key": "product_sales_qty",
+      "label": "服务人次",
+      "value_type": "number",
+      "unit": "人次",
+      "role": "quantity",
+      "agg": "sum",
+      "required": true,
+      "sort": 2,
+      "legacy_column": "product_sales_qty"
+    },
+    {
+      "key": "total_revenue",
+      "label": "营收",
+      "value_type": "number",
+      "unit": "元",
+      "role": "amount",
+      "agg": "sum",
+      "required": true,
+      "sort": 3,
+      "legacy_column": "total_revenue"
+    },
+    {
+      "key": "raw_material_remaining",
+      "label": "耗材剩余",
+      "value_type": "number",
+      "unit": "份",
+      "role": "stock",
+      "agg": "sum",
+      "required": false,
+      "sort": 4,
+      "legacy_column": "raw_material_remaining"
+    },
+    {
+      "key": "raw_material_waste",
+      "label": "耗材损耗",
+      "value_type": "number",
+      "unit": "份",
+      "role": "waste",
+      "agg": "sum",
+      "required": false,
+      "sort": 5,
+      "legacy_column": "raw_material_waste"
+    },
+    {
+      "key": "abnormal_notes",
+      "label": "异常备注",
+      "value_type": "text",
+      "unit": "",
+      "role": "note",
+      "agg": "none",
+      "required": false,
+      "sort": 6,
+      "legacy_column": "abnormal_notes"
+    }
+  ],
+  "formula_params": {
+    "waste_rate_threshold": 0.1
+  },
+  "files": {
+    "questions": "questions.json",
+    "scenarios": "scenarios.json",
+    "products": "products.json"
+  }
+}

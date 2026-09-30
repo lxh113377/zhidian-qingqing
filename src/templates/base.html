@@ -1,0 +1,277 @@
+{% import "_icons.html" as icons %}
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>{% block title %}门店管理助手{% endblock %}</title>
+    <link rel="icon" type="image/svg+xml" href="{{ asset_url('favicon.svg') }}">
+    <meta name="theme-color" content="#0B1B19">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <script>
+    // https 自愈（G2）：托管平台下发的预览链接是 http://，而生产环境的会话 Cookie
+    // 带 Secure 标记，浏览器在 http 页面会直接丢弃它 → 一登录就 400（CSRF 会话丢失）。
+    // 反向代理不上报 X-Forwarded-Proto，服务端无从判断，故在任何表单提交前由页面自升级。
+    // 本地开发（http://localhost / 127.0.0.1）跳过，避免本地无证书时被跳死。
+    (function () {
+        if (location.protocol !== 'http:') return;
+        var h = location.hostname;
+        if (h === 'localhost' || h === '127.0.0.1' || h === '[::1]') return;
+        location.replace('https://' + location.host + location.pathname + location.search + location.hash);
+    })();
+    </script>
+    <script>
+    // 主题初始化（渲染前执行，防闪烁）：手动选择优先，缺省默认「墨绿黑暗主题」（雾山青暗室）
+    (function () {
+        var t = null;
+        try { t = localStorage.getItem('ican-theme'); } catch (e) {}
+        if (t === 'dark' || t === 'light') {
+            document.documentElement.dataset.theme = t;
+        } else {
+            document.documentElement.dataset.theme = 'dark';
+        }
+        // 地址栏/状态栏颜色随主题：亮色雾山青 vs 墨绿黑（默认）
+        var meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) meta.content = document.documentElement.dataset.theme === 'light' ? '#0F766E' : '#0B1B19';
+    })();
+    </script>
+    {# ── CSS 分层加载（性能 P0-3）──────────────────────────────
+       critical.css：关键层（设计令牌 / 基础 / 顶栏 / 登录页 / 表单 / 按钮 / 卡片 / 分页），
+                     阻塞加载 —— 首屏这一层必须就位，否则会看到无样式内容。
+       style.css   ：其余层（后台 / 表格 / AI 模块 / 各业务面板），
+                     用 preload 立即发起请求、到达后再切成样式表，**不阻塞首屏渲染**。
+       两层相对顺序与拆分前一致（critical 全部排在前），层叠结果不变。 #}
+    <link rel="stylesheet" href="{{ asset_url('css/critical.css') }}">
+    <link rel="preload" as="style" href="{{ asset_url('css/style.css') }}"
+          onload="this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="{{ asset_url('css/style.css') }}"></noscript>
+</head>
+<body class="{% block body_class %}{% endblock %}">
+    <a class="skip-link" href="#main">跳到主要内容</a>
+    <div class="container">
+        <header class="app-header">
+        {% block nav %}
+        <nav class="top-nav">
+            <div class="nav-brand"><span class="brand-logo brand-nav" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 10h9v6a3.5 3.5 0 0 1-3.5 3.5H9.5A3.5 3.5 0 0 1 6 16v-6z"/><path d="M15 11h1.5a2 2 0 0 1 0 4H15"/><path d="M8.5 4.5c-.9.8-1.4 1.6-1.4 2.6M12 3.5c-.9.8-1.4 1.6-1.4 2.6M15.5 4.5c-.9.8-1.4 1.6-1.4 2.6" fill="none"/></svg></span>门店管理</div>
+            {% if admin_pack_options %}
+            <form method="post" action="{{ url_for('industry.pack_activate_selected') }}" class="pack-switcher">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <label for="adminPackSelect">行业包</label>
+                <select id="adminPackSelect" name="pack_id" aria-label="切换行业包">
+                    {% for p in admin_pack_options %}
+                    <option value="{{ p.id }}"{{ ' selected' if p.id == admin_active_pack else '' }}>{{ p.name }}{{ '（当前）' if p.id == admin_active_pack else '' }}</option>
+                    {% endfor %}
+                </select>
+                <button type="submit" class="btn-pack-switch">切换</button>
+            </form>
+            {% endif %}
+            {% if admin_store_options %}
+            <form method="post" action="{{ url_for('stores.switch_store') }}" class="pack-switcher">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <label for="adminStoreSelect">门店</label>
+                <select id="adminStoreSelect" name="store_id" aria-label="切换当前门店">
+                    {% for s in admin_store_options %}
+                    <option value="{{ s.id }}"{{ ' selected' if s.id == admin_current_store_id else '' }}>{{ s.name }}{{ '（当前）' if s.id == admin_current_store_id else '' }}</option>
+                    {% endfor %}
+                </select>
+                <button type="submit" class="btn-pack-switch">切换</button>
+                <a class="btn-pack-switch" href="{{ url_for('stores.store_list') }}">管理</a>
+            </form>
+            {% endif %}
+            <div class="nav-user">
+                {% if current_user.is_authenticated %}
+                {% if current_user.role is defined and current_user.role == 'platform' %}
+                <a class="btn-pack-switch" href="{{ url_for('admin.platform_demo_reset') }}">演示数据重建</a>
+                {% endif %}
+                {% if current_user.role is defined and current_user.role in ('owner', 'manager') %}
+                <a class="btn-pack-switch" href="{{ url_for('tasks.task_list') }}">任务</a>
+                <a class="btn-pack-switch" href="{{ url_for('admin.data_import_view') }}">导入</a>
+                {% endif %}
+                <span>{{ current_user.display_name or current_user.username }}</span>
+                <form method="post" action="{{ url_for('auth.logout') }}" class="logout-form">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn-logout">退出</button>
+                </form>
+                {% endif %}
+            </div>
+        </nav>
+        {% endblock %}
+        </header>
+
+        <div class="flash-messages" role="status" aria-live="polite">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, msg in messages %}
+                    <div class="flash flash-{{ category }}" role="status" data-flash="{{ category }}">
+                        {% if category == 'success' %}{{ icons.result(16) }}
+                        {% elif category == 'danger' %}{{ icons.fail(16) }}
+                        {% elif category == 'warning' %}{{ icons.alert(16) }}
+                        {% else %}{{ icons.alert(16) }}{% endif %}
+                        <span>{{ msg }}</span>
+                        {# 成功提示由 main.js 4s 自动消失；错误/警告保留至手动关闭，保证用户可重读 #}
+                        {% if category != 'success' %}
+                        <button type="button" class="flash-close" aria-label="关闭提示">{{ icons.fail(14) }}</button>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+        </div>
+
+        <main class="main-content" id="main" tabindex="-1">
+            {% block content %}{% endblock %}
+        </main>
+
+        {# 站点页脚（语义 <footer> landmark）：品牌收束 + 演示数据声明；
+           文案已过盲审红线自检（0 命中，见 quality_gate 第 5 项）。样式见 style.css §26。 #}
+        <footer class="site-footer">
+            <p>智电轻擎 · 全行业多门店轻量化 AI 管理平台</p>
+            <p>页面展示的均为演示数据，不涉及真实门店经营信息。</p>
+        </footer>
+    </div>
+
+    <!-- 店员端固定底部 Tab 导航（4 页高频切换；仅店员身份渲染，管理员端保持 PC 网格导航） -->
+    {% if current_user.is_authenticated and current_user.store_name is defined
+          and (request.blueprint == 'h5' or request.endpoint in ('ai.hub', 'ai.quiz', 'ai.chat')) %}
+    <nav class="bottom-tabs" aria-label="店员端主导航">
+        <a href="{{ url_for('h5.dashboard') }}" class="tab-item {{ 'active' if request.endpoint == 'h5.dashboard' else '' }}"
+           {% if request.endpoint == 'h5.dashboard' %}aria-current="page"{% endif %}>
+            <span class="tab-icon">{{ icons.report(22) }}</span><span class="tab-text">填报</span>
+        </a>
+        <a href="{{ url_for('h5.history') }}" class="tab-item {{ 'active' if request.endpoint == 'h5.history' else '' }}"
+           {% if request.endpoint == 'h5.history' %}aria-current="page"{% endif %}>
+            <span class="tab-icon">{{ icons.history(22) }}</span><span class="tab-text">历史</span>
+        </a>
+        <a href="{{ url_for('h5.training') }}" class="tab-item {{ 'active' if request.endpoint == 'h5.training' else '' }}"
+           {% if request.endpoint == 'h5.training' %}aria-current="page"{% endif %}>
+            <span class="tab-icon">{{ icons.progress(22) }}</span><span class="tab-text">培训</span>
+        </a>
+        <a href="{{ url_for('ai.hub') }}" class="tab-item {{ 'active' if request.endpoint in ('ai.hub', 'ai.quiz', 'ai.chat') else '' }}"
+           {% if request.endpoint in ('ai.hub', 'ai.quiz', 'ai.chat') %}aria-current="page"{% endif %}>
+            <span class="tab-icon">{{ icons.ai(22) }}</span><span class="tab-text">AI</span>
+        </a>
+        <a href="{{ url_for('h5.tasks') }}" class="tab-item {{ 'active' if request.endpoint in ('h5.tasks', 'h5.task_status') else '' }}"
+           {% if request.endpoint in ('h5.tasks', 'h5.task_status') %}aria-current="page"{% endif %}>
+            <span class="tab-icon">{{ icons.result(22) }}</span><span class="tab-text">任务</span>
+        </a>
+    </nav>
+    {% endif %}
+
+    <!-- 主题切换（全局浮动 fab，内联脚本保证快照剥离 main.js 后仍可切换） -->
+    <button type="button" class="theme-toggle theme-fab" id="themeToggle"
+            title="切换深色/浅色" aria-label="切换深色/浅色">
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="20" height="20" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="20" height="20" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+    </button>
+    <script>
+    (function () {
+        var btn = document.getElementById('themeToggle');
+        if (!btn) return;
+        var mq = window.matchMedia('(prefers-color-scheme: dark)');
+        function isDark() {
+            var t = document.documentElement.dataset.theme;
+            return t ? t === 'dark' : true; // 缺省默认墨绿黑暗主题
+        }
+        function syncIcon() {
+            // 图标语义 = 点击后切换到的目标主题：暗色显示太阳（切亮），亮色显示月亮（切暗）
+            var dark = isDark();
+            var sun = btn.querySelector('.icon-sun');
+            var moon = btn.querySelector('.icon-moon');
+            if (sun) sun.style.display = dark ? 'block' : 'none';
+            if (moon) moon.style.display = dark ? 'none' : 'block';
+        }
+        syncIcon();
+        btn.addEventListener('click', function () {
+            var next = isDark() ? 'light' : 'dark';
+            try { localStorage.setItem('ican-theme', next); } catch (e) {}
+            document.documentElement.dataset.theme = next;
+            var meta = document.querySelector('meta[name="theme-color"]');
+            if (meta) meta.content = next === 'light' ? '#0F766E' : '#0B1B19';
+            syncIcon();
+            // 即时切换无需整页 reload；含 ECharts 的页面（如管理员看板）监听本事件重绘
+            document.dispatchEvent(new Event('ichart-theme'));
+        });
+        if (mq.addEventListener) mq.addEventListener('change', syncIcon);
+    })();
+    </script>
+    <noscript><style>
+    /* 无 JS：折叠列表全量展开（不出现「看不到全部」），折叠按钮隐藏（不出现「点了没反应」） */
+    .record-list.is-collapsed .record-item { display: block !important; }
+    .record-list.is-collapsed .record-item:nth-child(5) { border-bottom: 1px solid var(--border); border-radius: 0; }
+    .record-list.is-collapsed .record-item:last-child { border-bottom: none; border-radius: 0 0 var(--radius-lg) var(--radius-lg); }
+    [data-collapse-toggle] { display: none !important; }
+    </style></noscript>
+    <script>
+    // 长列表折叠 + 顶栏滚动分层（内联：快照剥离 main.js 后仍生效）
+    (function () {
+        function initCollapse() {
+            Array.prototype.forEach.call(document.querySelectorAll('[data-collapse-list]'), function (list) {
+                if (!list.id) return;
+                var btn = document.querySelector('[data-collapse-toggle="' + list.id + '"]');
+                if (!btn) return;
+                btn.hidden = false;
+                function sync() {
+                    var collapsed = list.classList.contains('is-collapsed');
+                    btn.textContent = collapsed ? (btn.getAttribute('data-label-more') || '展开全部')
+                                                : (btn.getAttribute('data-label-less') || '收起');
+                    btn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+                }
+                btn.addEventListener('click', function () {
+                    list.classList.toggle('is-collapsed');
+                    sync();
+                });
+                sync();
+            });
+        }
+        function initNav() {
+            var nav = document.querySelector('.top-nav');
+            if (!nav) return;
+            function refresh() { nav.classList.toggle('scrolled', window.scrollY > 4); }
+            window.addEventListener('scroll', refresh, { passive: true });
+            refresh();
+        }
+        function init() { initCollapse(); initNav(); }
+        if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', init); }
+        else { init(); }
+    })();
+    </script>
+    <script>
+    // ── echarts 按需加载器（性能 P0-2）────────────────────────────
+    // `echarts.custom.js` 604KB，同步加载会把手机端首屏整个堵住（H5 培训页尤甚）。
+    // 改为：图表容器进入视口（或页面已有该请求）时才拉取引擎，首屏不再被它阻塞。
+    // 内联而非放 main.js：快照会剥离 main.js，内联可保证快照里图表仍可用。
+    // 幂等解包：该文件是 rolldown 的 IIFE 产物，`window.echarts` 实际是 `{default: api}`
+    // （键集实测仅 ['default']），不解包则 `echarts.init` 为 undefined、图表静默不渲染。
+    (function () {
+        var SRC = "{{ asset_url('js/echarts.custom.js') }}";
+        var queue = [], loading = false;
+        function unwrap() {
+            if (window.echarts && !window.echarts.init && window.echarts.default) {
+                window.echarts = window.echarts.default;
+            }
+        }
+        window.withEcharts = function (cb) {
+            if (window.echarts && typeof window.echarts.init === 'function') { cb(); return; }
+            queue.push(cb);
+            if (loading) return;
+            loading = true;
+            var s = document.createElement('script');
+            s.src = SRC;
+            s.async = true;
+            s.onload = function () {
+                unwrap();
+                loading = false;
+                var q = queue;
+                queue = [];
+                q.forEach(function (f) { try { f(); } catch (e) {} });
+            };
+            // 加载失败只放弃图表，不影响页面其余功能（不留半开锁）
+            s.onerror = function () { loading = false; queue = []; };
+            document.head.appendChild(s);
+        };
+    })();
+    </script>
+    <script src="{{ asset_url('js/main.js') }}"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

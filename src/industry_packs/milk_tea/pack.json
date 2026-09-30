@@ -1,0 +1,145 @@
+{
+  "schema_version": 1,
+  "id": "milk_tea",
+  "name": "奶茶店",
+  "version": "1.0.0",
+  "description": "现制茶饮门店行业包（默认包，由既有奶茶内容迁移而来）",
+  "terms": {
+    "store": "门店",
+    "record_dimension": "产品",
+    "record_dimension_plural": "产品",
+    "quantity_unit": "杯",
+    "material_group": "原料情况",
+    "material_remaining": "原料剩余",
+    "material_waste": "原料损耗",
+    "material_unit": "份",
+    "staff_title": "店员",
+    "customer_title": "顾客",
+    "assistant_persona": "你是奶茶店经营助手",
+    "analyst_persona": "你是奶茶店经营分析师",
+    "trainer_persona": "你是奶茶店培训教练",
+    "scenario_customer": "奶茶店顾客",
+    "report_footer": "奶茶店经营参考",
+    "sample_dimension": "杨枝甘露",
+    "sample_shelf_question": "珍珠煮好后能放多久？"
+  },
+  "domains": [
+    {
+      "name": "原料规范",
+      "knowledge_file": "原料规范.md",
+      "tip": "熟记各原料储存条件与效期，强化「损耗率超 15% 即异常」的排查意识",
+      "keywords": ["原料", "损耗", "保存"]
+    },
+    {
+      "name": "异议处理",
+      "knowledge_file": "异议处理.md",
+      "tip": "巩固「先处理情绪再处理事情」原则，重点练习价格异议与催单场景的应答",
+      "keywords": ["异议", "安全", "卫生"]
+    },
+    {
+      "name": "套餐价格",
+      "knowledge_file": "套餐价格.md",
+      "tip": "牢记在售产品单价与套餐门槛，练习先报主价再带优惠增值选项的报价",
+      "keywords": ["价格", "套餐"]
+    },
+    {
+      "name": "服务话术",
+      "knowledge_file": "服务话术.md",
+      "tip": "打磨迎客/点单/交付/送客全流程话术，坚持「出错先致歉再补救」原则",
+      "keywords": ["话术", "服务"]
+    }
+  ],
+  "weak_keywords": ["原料", "损耗", "保存", "价格", "话术", "服务", "异议", "卫生", "安全"],
+  "synonyms": [
+    ["省钱", "优惠"],
+    ["省多少", "优惠"],
+    ["便宜", "优惠"],
+    ["折扣", "优惠"],
+    ["保存", "储存"],
+    ["存放", "储存"],
+    ["效期", "保质期"],
+    ["应对", "话术"],
+    ["回复", "话术"],
+    ["回答", "话术"],
+    ["价钱", "价格"],
+    ["价", "价格"],
+    ["怎么", "如何"],
+    ["多少", "几"]
+  ],
+  "metrics": [
+    {
+      "key": "product_name",
+      "label": "产品",
+      "value_type": "text",
+      "unit": "",
+      "role": "dimension",
+      "agg": "count",
+      "required": true,
+      "sort": 1,
+      "legacy_column": "product_name"
+    },
+    {
+      "key": "product_sales_qty",
+      "label": "销量",
+      "value_type": "number",
+      "unit": "杯",
+      "role": "quantity",
+      "agg": "sum",
+      "required": true,
+      "sort": 2,
+      "legacy_column": "product_sales_qty"
+    },
+    {
+      "key": "total_revenue",
+      "label": "营收",
+      "value_type": "number",
+      "unit": "元",
+      "role": "amount",
+      "agg": "sum",
+      "required": true,
+      "sort": 3,
+      "legacy_column": "total_revenue"
+    },
+    {
+      "key": "raw_material_remaining",
+      "label": "原料剩余",
+      "value_type": "number",
+      "unit": "份",
+      "role": "stock",
+      "agg": "sum",
+      "required": false,
+      "sort": 4,
+      "legacy_column": "raw_material_remaining"
+    },
+    {
+      "key": "raw_material_waste",
+      "label": "原料损耗",
+      "value_type": "number",
+      "unit": "份",
+      "role": "waste",
+      "agg": "sum",
+      "required": false,
+      "sort": 5,
+      "legacy_column": "raw_material_waste"
+    },
+    {
+      "key": "abnormal_notes",
+      "label": "异常备注",
+      "value_type": "text",
+      "unit": "",
+      "role": "note",
+      "agg": "none",
+      "required": false,
+      "sort": 6,
+      "legacy_column": "abnormal_notes"
+    }
+  ],
+  "formula_params": {
+    "waste_rate_threshold": 0.15
+  },
+  "files": {
+    "questions": "questions.json",
+    "scenarios": "scenarios.json",
+    "products": "products.json"
+  }
+}

@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% import "_icons.html" as icons %}
+{% block title %}店员工作台 · 门店管理助手{% endblock %}
+{% block body_class %}h5-page{% endblock %}
+{% block content %}
+<div class="date-header">
+    <h2>{{ today.strftime('%Y年%m月%d日') }} <small>今日数据填报</small></h2>
+</div>
+
+<form method="POST" action="{{ url_for('h5.submit') }}" class="sales-form" data-record-date="{{ today.isoformat() }}"
+       data-scope-staff="{{ scope_staff_id or '' }}" data-scope-store="{{ scope_store_id or '' }}" data-scope-pack="{{ scope_pack_id or '' }}" data-scope-packver="{{ scope_pack_ver or '' }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    {# P7 骨架字段随行业包渲染：标签/单位/是否出现全部取自当前包指标定义，
+       模板只渲染不判断角色（奶茶=产品·原料，水果=品类·鲜度，便利店=商品·无损耗组） #}
+    <div class="form-section-title">销售数据</div>
+    {% if form.dimension %}
+    <div class="form-group">
+        <label for="{{ form.dimension.name }}">{{ form.dimension.label }}</label>
+        <select name="{{ form.dimension.name }}" id="{{ form.dimension.name }}" class="form-control" data-skeleton="dimension" required>
+            <option value="">请选择{{ form.dimension.label }}</option>
+            {% for p in products %}
+            <option value="{{ p.product_name }}" data-price="{{ p.unit_price or '' }}">{{ p.product_name }}{% if p.unit_price %}（¥{{ p.unit_price }}）{% endif %}</option>
+            {% endfor %}
+        </select>
+    </div>
+    {% endif %}
+    {% for f in form.sales %}
+    <div class="form-group">
+        <label for="{{ f.name }}">{{ f.label }}{% if f.unit %}（{{ f.unit }}）{% endif %}</label>
+        <input type="number" name="{{ f.name }}" id="{{ f.name }}" class="form-control" data-skeleton="{{ f.role }}" min="0" step="{{ f.step }}" value="0">
+    </div>
+    {% endfor %}
+    {% if form.material %}
+    <div class="form-section-title">{{ form.material_group }}</div>
+    <div class="form-row">
+        {% for f in form.material %}
+        <div class="form-group flex-1">
+            <label for="{{ f.name }}">{{ f.label }}{% if f.unit %}（{{ f.unit }}）{% endif %}</label>
+            <input type="number" name="{{ f.name }}" id="{{ f.name }}" class="form-control" min="0" step="{{ f.step }}" placeholder="可选">
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% if form.custom %}
+    {# P2 自定义指标：按当前行业包 MetricDef 动态渲染；包未定义时整组消失 #}
+    <div class="form-section-title">自定义指标</div>
+    {% for m in form.custom %}
+    <div class="form-group">
+        <label for="metric_{{ m.key }}">{{ m.label }}{% if m.unit %}（{{ m.unit }}）{% endif %}{% if m.required %} *{% endif %}</label>
+        {% if m.value_type == 'text' %}
+        <textarea name="{{ m.key }}" id="metric_{{ m.key }}" class="form-control" placeholder="{{ '必填' if m.required else '可选' }}"></textarea>
+        {% else %}
+        <input type="number" name="{{ m.key }}" id="metric_{{ m.key }}" class="form-control" min="0" step="{% if m.value_type == 'integer' %}1{% else %}0.01{% endif %}" placeholder="{{ '必填' if m.required else '可选' }}">
+        {% endif %}
+    </div>
+    {% endfor %}
+    {% endif %}
+    {% if form.note %}
+    <div class="form-section-title">异常备注</div>
+    <div class="form-group">
+        <label for="{{ form.note.name }}">{{ form.note.label }}</label>
+        <textarea name="{{ form.note.name }}" id="{{ form.note.name }}" class="form-control" placeholder="如缺货、设备故障等（可选）"></textarea>
+    </div>
+    {% endif %}
+    <button type="submit" class="btn btn-primary btn-block">提交今日数据</button>
+</form>
+
+{% if today_records %}
+<div class="section">
+    <h3>今日已提交</h3>
+    <div class="record-list">
+        {% for r in today_records %}
+        <div class="record-item">
+            <div class="record-header">
+                <span class="product-name">{{ r.product_name }}</span>
+                <span class="badge badge-secondary">{{ r.product_sales_qty }} {{ form.quantity_unit }}</span>
+            </div>
+            <div class="record-detail">营收 ¥{{ r.total_revenue }}</div>
+            {% if r.abnormal_notes %}<div class="record-note">{{ icons.alert(14) }} {{ r.abnormal_notes }}</div>{% endif %}
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% else %}
+<div class="empty-state">
+    <span class="empty-icon">{{ icons.report(44) }}</span>
+    <p>今天还没有提交数据，填写上方表单开始吧。</p>
+</div>
+{% endif %}
+
+<div class="nav-links">
+    <a href="{{ url_for('h5.history') }}" class="home-card"><span class="home-card-icon">{{ icons.history(30) }}</span><span class="home-card-text"><strong>填报历史</strong><small>查看过往记录</small></span></a>
+    <a href="{{ url_for('h5.training') }}" class="home-card"><span class="home-card-icon">{{ icons.progress(30) }}</span><span class="home-card-text"><strong>我的培训进度</strong><small>查看考核与薄弱点</small></span></a>
+    <a href="{{ url_for('ai.hub') }}" class="home-card"><span class="home-card-icon">{{ icons.ai(30) }}</span><span class="home-card-text"><strong>AI 培训考核</strong><small>问答 / 情景 / 上岗考</small></span></a>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// 营收自动计算（前端体验，非信任边界：后端 parse_float + MAX_REVENUE 仍兜底校验）
+// 选产品/改数量 → 单价×数量 自动填营收；无单价产品或数量≤0 时清空（不填 0 避免误导）。
+(function () {
+    'use strict';
+    // 按业务角色取字段（P7）：骨架字段名随行业包，不绑定具体 id
+    var sel = document.querySelector('[data-skeleton="dimension"]');
+    var qty = document.querySelector('[data-skeleton="quantity"]');
+    var rev = document.querySelector('[data-skeleton="amount"]');
+    if (!sel || !qty || !rev) return;
+    function recalc() {
+        var opt = sel.options[sel.selectedIndex];
+        var price = opt ? parseFloat(opt.getAttribute('data-price') || '') : NaN;
+        var q = parseFloat(qty.value);
+        if (price > 0 && q > 0) {
+            rev.value = (price * q).toFixed(2);
+        } else {
+            rev.value = '';
+        }
+    }
+    sel.addEventListener('change', recalc);
+    qty.addEventListener('input', recalc);
+})();
+</script>
+{# 弱网离线待传（H4）：外部 js 而非内联 —— 本模块只服务真实填报，
+   演示快照剥离 main.js 时一并剥离它，避免静态快照往评审机 localStorage 写数据。 #}
+{# 归属判定库必须先于主模块加载：主模块在 IIFE 里读 window.ICANOfflineScope，
+   顺序颠倒 ⇒ CURRENT_SCOPE 恒空 ⇒ 所有条目被 fail-closed 挂起（功能静默不续传）。 #}
+<script src="{{ asset_url('js/offline_scope.js') }}"></script>
+<script src="{{ asset_url('js/offline_idem.js') }}"></script>
+<script src="{{ asset_url('js/offline_submit.js') }}"></script>
+{% endblock %}

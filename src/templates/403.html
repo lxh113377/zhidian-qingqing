@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% import "_icons.html" as icons %}
+{% block title %}无访问权限 · 403{% endblock %}
+{% block nav %}{% endblock %}
+{% block content %}
+<div class="empty-state">
+    <span class="brand-logo brand-hero" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 10h9v6a3.5 3.5 0 0 1-3.5 3.5H9.5A3.5 3.5 0 0 1 6 16v-6z"/><path d="M15 11h1.5a2 2 0 0 1 0 4H15"/><path d="M8.5 4.5c-.9.8-1.4 1.6-1.4 2.6M12 3.5c-.9.8-1.4 1.6-1.4 2.6M15.5 4.5c-.9.8-1.4 1.6-1.4 2.6" fill="none"/></svg></span>
+    <div class="error-emoji">{{ icons.lock() }}</div>
+    <h2>403 无访问权限</h2>
+    <p>{{ message or '当前账号无权访问该页面，请使用对应角色的账号登录。' }}</p>
+    <a href="{{ url_for('portal') }}" class="btn btn-primary">返回首页</a>
+</div>
+{% endblock %}

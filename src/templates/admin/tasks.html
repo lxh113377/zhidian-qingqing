@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}责任任务 · 门店管理助手{% endblock %}
+{% block body_class %}is-admin{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h2>责任任务</h2>
+    <span class="chip">未完成 {{ stats.active }} · 逾期 {{ stats.overdue }} · 已完成 {{ stats.done }}</span>
+</div>
+
+<section class="panel">
+    <h3>新建任务</h3>
+    <form method="POST" action="{{ url_for('tasks.task_create') }}" class="task-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="next" value="{{ url_for('tasks.task_list') }}">
+        <div class="form-row">
+            <div class="form-group">
+                <label for="taskTitle">任务</label>
+                <input id="taskTitle" class="form-control" name="title" maxlength="120" required>
+            </div>
+            <div class="form-group">
+                <label for="taskStore">门店</label>
+                <select id="taskStore" class="form-control" name="store_id" required>
+                    {% for store in store_options %}
+                    <option value="{{ store.id }}">{{ store.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="taskAssignee">负责人</label>
+                <select id="taskAssignee" class="form-control" name="assignee" required>
+                    {% for option in assignee_options %}
+                    <option value="{{ option.value }}">{{ option.label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="taskDue">截止时间</label>
+                <input id="taskDue" class="form-control" type="date" name="due_date"
+                       value="{{ default_due_date }}" required>
+            </div>
+        </div>
+        <div class="form-group">
+            <label for="taskDetail">说明</label>
+            <textarea id="taskDetail" class="form-control" name="detail" rows="2"></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary btn-sm">创建任务</button>
+    </form>
+</section>
+
+<section class="panel">
+    <div class="task-filter">
+        <a class="btn btn-outline btn-sm{{ ' active' if not status and not overdue else '' }}"
+           href="{{ url_for('tasks.task_list') }}">全部</a>
+        {% for key, label in status_labels.items() %}
+        <a class="btn btn-outline btn-sm{{ ' active' if status == key else '' }}"
+           href="{{ url_for('tasks.task_list', status=key) }}">{{ label }}</a>
+        {% endfor %}
+        <a class="btn btn-outline btn-sm{{ ' active' if overdue else '' }}"
+           href="{{ url_for('tasks.task_list', overdue='1') }}">逾期</a>
+    </div>
+    <div class="list-rows">
+        {% for row in tasks %}
+        <div class="list-row task-row{{ ' task-overdue' if row.overdue else '' }}">
+            <div>
+                <strong class="task-title">{{ row.task.title }}</strong>
+                <small class="text-muted">{{ row.store_name }} · {{ row.assignee }} · 截止 {{ row.task.due_date.isoformat() }}</small>
+            </div>
+            <div class="task-actions">
+                <span class="badge badge-{{ 'danger' if row.overdue else 'neutral' }}">{{ '已逾期' if row.overdue else row.status_label }}</span>
+                {% if row.task.status == 'pending' %}
+                <form method="POST" action="{{ url_for('tasks.task_status', task_id=row.task.id) }}" class="inline-form">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="status" value="in_progress">
+                    <button class="btn btn-outline btn-sm" type="submit">开始</button>
+                </form>
+                {% elif row.task.status == 'in_progress' %}
+                <form method="POST" action="{{ url_for('tasks.task_status', task_id=row.task.id) }}" class="inline-form">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="status" value="done">
+                    <button class="btn btn-primary btn-sm" type="submit">完成</button>
+                </form>
+                {% endif %}
+                <a class="btn btn-outline btn-sm" href="{{ url_for('tasks.task_detail', task_id=row.task.id) }}">详情</a>
+            </div>
+        </div>
+        {% else %}
+        <p class="text-muted">暂无符合条件的任务。</p>
+        {% endfor %}
+    </div>
+</section>
+{% endblock %}

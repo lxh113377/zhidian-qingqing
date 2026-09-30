@@ -1,0 +1,121 @@
+# iCAN 项目 — Dify 私有化部署（腾讯云 Docker 自托管）
+# 用途：在自有服务器上私有化运行 Dify，承载本项目的 AI 培训考核 / 备货建议 / 损耗提醒。
+# 安全红线：禁止使用公共 Dify 云端，所有数据与模型调用留在自己服务器。
+#
+# 用法：
+#   1. 复制本目录下的 .env.example 为 .env 并填入强密码
+#   2. docker compose up -d
+#   3. 浏览器打开 http://<服务器IP>:8080 进入 Dify 控制台
+#   4. 创建 Chat App（问答/情景/考核）+ Completion App（备货建议/损耗提醒），开启 RAG 并上传 knowledge_base/ 四篇文档
+#   5. 复制两个 App 的 API Key 到本项目 .env 的 DIFY_CHAT_APP_KEY / DIFY_ADVICE_APP_KEY，重启 Flask
+#
+# 说明：本文件为 Dify 自托管核心服务精简版，生产环境请以官方 release 的 docker-compose 为准。
+
+version: '3'
+
+services:
+  # ── PostgreSQL：Dify 元数据存储 ──
+  db:
+    image: postgres:15-alpine
+    restart: always
+    environment:
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-difyai123456}
+      POSTGRES_DB: ${DB_NAME:-dify}
+      POSTGRES_USER: ${DB_USER:-postgres}
+    volumes:
+      - ./volumes/db/data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ── Redis：缓存与队列 ──
+  redis:
+    image: redis:6-alpine
+    restart: always
+    volumes:
+      - ./volumes/redis/data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ── Weaviate：向量数据库（RAG 检索）──
+  weaviate:
+    image: semitechnologies/weaviate:1.19.0
+    restart: always
+    environment:
+      QUERY_DEFAULTS_LIMIT: 25
+      AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: "true"
+      PERSISTENCE_DATA_PATH: "/var/lib/weaviate"
+    volumes:
+      - ./volumes/weaviate:/var/lib/weaviate
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/v1/.well-known/ready"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ── Dify API ──
+  api:
+    image: langgenius/dify-api:0.6.0
+    restart: always
+    depends_on:
+      - db
+      - redis
+      - weaviate
+    environment:
+      MODE: api
+      DB_USERNAME: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-difyai123456}
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_DATABASE: ${DB_NAME:-dify}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_USERNAME: ""
+      REDIS_PASSWORD: ""
+      WEAVIATE_ENDPOINT: http://weaviate:8080
+      SECRET_KEY: ${DIFY_SECRET_KEY:-please-change-this-secret}
+      DIFY_WEB_URL: http://localhost:8080
+    volumes:
+      - ./volumes/app/storage:/app/api/storage
+
+  # ── Dify Worker：异步任务 ──
+  worker:
+    image: langgenius/dify-api:0.6.0
+    restart: always
+    depends_on:
+      - db
+      - redis
+      - weaviate
+    environment:
+      MODE: worker
+      DB_USERNAME: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-difyai123456}
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_DATABASE: ${DB_NAME:-dify}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      WEAVIATE_ENDPOINT: http://weaviate:8080
+      SECRET_KEY: ${DIFY_SECRET_KEY:-please-change-this-secret}
+    volumes:
+      - ./volumes/app/storage:/app/api/storage
+
+  # ── Dify Web 控制台 ──
+  web:
+    image: langgenius/dify-web:0.6.0
+    restart: always
+    depends_on:
+      - api
+    environment:
+      EDITION: SELF_HOSTED
+      API_URL: http://api:5001
+    ports:
+      - "8080:3000"
+
+  # 说明：生产环境可在 web 前加 Nginx 反代（HTTPS/域名），此处省略以免端口冲突，
+  # Dify Web 已直接暴露 8080。

@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 安全联系与承诺的唯一真相源
+    url: ../blob/main/SECURITY.md
+    about: 本目录只是入口引导，条款一律以 SECURITY.md 为准

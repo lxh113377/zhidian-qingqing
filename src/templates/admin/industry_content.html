@@ -1,0 +1,421 @@
+{% extends "base.html" %}
+{% import "_icons.html" as icons %}
+{% block title %}包内容编辑 · {{ pack.name }}{% endblock %}
+{% block body_class %}is-admin{% endblock %}
+{% block content %}
+<div class="page-header">
+    <a href="{{ url_for('industry.pack_list') }}" class="btn-back">← 返回包管理</a>
+    <h2>{{ pack.name }}<small class="text-muted"> · {{ pack.id }}</small></h2>
+    {% if pack.active %}<span class="status active">当前激活</span>{% endif %}
+</div>
+<p class="range-note">分区编辑行业内容，保存后立即生效（无需重启）。每区「恢复内置默认」仅清除该区 DB 覆盖，回退随代码交付的文件包。</p>
+
+{% if override_error %}
+<div class="flash flash-warning" role="status">
+    {{ icons.alert(16) }}
+    <span>本包自定义内容读取失败，下方显示的是内置默认内容——保存将覆盖回内置值之前请先确认数据库可用（{{ override_error.message }}）。</span>
+</div>
+{% endif %}
+
+<div class="pack-editor">
+    <nav class="pack-anchors" aria-label="内容分区">
+        <a href="#sec-terms">门店信息</a>
+        <a href="#sec-domains">知识域与词表</a>
+        <a href="#sec-knowledge">知识条目</a>
+        <a href="#sec-metrics">指标定义</a>
+        <a href="#sec-formula">公式参数</a>
+        <a href="#sec-questions">题库</a>
+        <a href="#sec-scenarios">情景剧本</a>
+        <a href="#sec-products">在售产品</a>
+    </nav>
+
+    <div class="pack-sections">
+        <!-- ══════════ 门店信息与术语 ══════════ -->
+        <section class="section" id="sec-terms">
+            <h3>门店信息与术语</h3>
+            <form method="POST" action="{{ url_for('industry.pack_save', pack_id=pack.id, action='terms') }}" class="sales-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                {% for key, val in pack.terms.items() %}
+                <div class="form-group">
+                    <label for="term_{{ key }}">{{ key }}</label>
+                    <input type="text" id="term_{{ key }}" name="terms__{{ key }}" class="form-control" value="{{ val }}" maxlength="200">
+                </div>
+                {% endfor %}
+                <div class="pack-save-bar">
+                    <button type="submit" class="btn btn-primary">保存术语</button>
+                    <button type="submit" class="btn btn-outline" formaction="{{ url_for('industry.pack_reset', pack_id=pack.id, section='terms') }}">恢复内置默认</button>
+                </div>
+            </form>
+        </section>
+
+        <!-- ══════════ 知识域与词表 ══════════ -->
+        <section class="section" id="sec-domains">
+            <h3>知识域与词表</h3>
+            <form method="POST" action="{{ url_for('industry.pack_save', pack_id=pack.id, action='domains') }}" class="sales-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="form-section-title">知识域（上限 {{ pack.max_domains }} 个）</div>
+                <div id="domainRows">
+                    {% for d in pack.domains %}
+                    <div class="form-row pack-row">
+                        <div class="form-group flex-1">
+                            <label>域名</label>
+                            <input type="text" name="domains__name" class="form-control" aria-label="域名" value="{{ d.name }}" maxlength="200">
+                        </div>
+                        <div class="form-group flex-2">
+                            <label>关键词（逗号分隔）</label>
+                            <input type="text" name="domains__keywords" class="form-control" aria-label="知识域关键词（逗号分隔）" value="{{ d.keywords | join(',') }}">
+                        </div>
+                        <div class="form-group flex-2">
+                            <label>复习建议</label>
+                            <input type="text" name="domains__tip" class="form-control" aria-label="复习建议" value="{{ d.tip }}" maxlength="200">
+                        </div>
+                        <button type="button" class="btn btn-outline btn-sm pack-del-row">删除</button>
+                    </div>
+                    {% endfor %}
+                </div>
+                <button type="button" class="btn btn-outline btn-sm" id="addDomainRow">+ 新增知识域</button>
+
+                <div class="form-section-title">弱项关键词（顺序即归因优先级）</div>
+                <div class="form-group">
+                    <input type="text" name="weak_keywords" class="form-control" aria-label="弱项关键词（逗号分隔）" value="{{ pack.weak_keywords | join(',') }}" placeholder="逗号分隔">
+                </div>
+
+                <div class="form-section-title">检索同义词对（口语,惯用词 每行一对）</div>
+                <div class="form-group">
+                    <textarea name="synonyms" class="form-control auto-grow" aria-label="检索同义词对（每行一对，逗号分隔）" rows="4" placeholder="省钱,优惠">{% for s in pack.synonyms %}{{ s | join(',') }}
+{% endfor %}</textarea>
+                </div>
+
+                <div class="pack-save-bar">
+                    <button type="submit" class="btn btn-primary">保存知识域</button>
+                    <button type="submit" class="btn btn-outline" formaction="{{ url_for('industry.pack_reset', pack_id=pack.id, section='domains') }}">恢复内置默认</button>
+                </div>
+            </form>
+        </section>
+
+        <!-- ══════════ 知识条目 ══════════ -->
+        <section class="section" id="sec-knowledge">
+            <h3>知识条目</h3>
+            <form method="POST" action="{{ url_for('industry.pack_save', pack_id=pack.id, action='knowledge') }}" class="sales-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                {% for d in pack.domains %}
+                <div class="form-group">
+                    <label for="kb_{{ loop.index }}">{{ d.name }}（markdown）</label>
+                    <textarea id="kb_{{ loop.index }}" name="knowledge__{{ d.name }}" class="form-control pack-md" rows="8">{{ pack.knowledge.get(d.name, '') }}</textarea>
+                </div>
+                {% endfor %}
+                <div class="pack-save-bar">
+                    <button type="submit" class="btn btn-primary">保存知识条目</button>
+                    <button type="submit" class="btn btn-outline" formaction="{{ url_for('industry.pack_reset', pack_id=pack.id, section='knowledge') }}">恢复内置默认</button>
+                </div>
+            </form>
+        </section>
+
+        <!-- ══════════ 指标定义 ══════════ -->
+        <section class="section" id="sec-metrics">
+            <h3>指标定义</h3>
+            <p class="form-hint">骨架指标（维度 / 销量 / 营收）不可删除；映射列名留空则存入自定义指标 JSON（metrics_json）。</p>
+            <form method="POST" action="{{ url_for('industry.pack_save', pack_id=pack.id, action='metrics') }}" class="sales-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div id="metricRows">
+                    {% for m in pack.metrics %}
+                    <div class="pack-row pack-metric-row">
+                        <div class="form-row">
+                            <div class="form-group flex-1">
+                                <label>键</label>
+                                <input type="text" name="metrics__key" class="form-control" aria-label="指标键" value="{{ m.key }}" maxlength="50">
+                            </div>
+                            <div class="form-group flex-1">
+                                <label>展示名</label>
+                                <input type="text" name="metrics__label" class="form-control" aria-label="指标展示名" value="{{ m.label }}" maxlength="50">
+                            </div>
+                            <div class="form-group flex-1">
+                                <label>类型</label>
+                                <select name="metrics__value_type" class="form-control" aria-label="指标类型">
+                                    {% for t in pack.valid_value_types %}<option value="{{ t }}" {{ 'selected' if m.value_type == t }}>{{ t }}</option>{% endfor %}
+                                </select>
+                            </div>
+                            <div class="form-group flex-1">
+                                <label>单位</label>
+                                <input type="text" name="metrics__unit" class="form-control" aria-label="指标单位" value="{{ m.unit }}" maxlength="20">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group flex-1">
+                                <label>角色</label>
+                                <select name="metrics__role" class="form-control" aria-label="指标角色">
+                                    {% for r in pack.valid_roles %}<option value="{{ r }}" {{ 'selected' if m.role == r }}>{{ r }}</option>{% endfor %}
+                                </select>
+                            </div>
+                            <div class="form-group flex-1">
+                                <label>聚合</label>
+                                <select name="metrics__agg" class="form-control" aria-label="指标聚合方式">
+                                    {% for a in pack.valid_aggs %}<option value="{{ a }}" {{ 'selected' if m.agg == a }}>{{ a }}</option>{% endfor %}
+                                </select>
+                            </div>
+                            <div class="form-group flex-1">
+                                <label>排序</label>
+                                <input type="number" name="metrics__sort" class="form-control" aria-label="指标排序" value="{{ m.sort }}">
+                            </div>
+                            <div class="form-group flex-1">
+                                <label>映射列名</label>
+                                <select name="metrics__legacy_column" class="form-control" aria-label="映射列名">
+                                    <option value="">（自定义）</option>
+                                    {% for c in pack.legacy_columns %}<option value="{{ c }}" {{ 'selected' if c == m.legacy_column }}>{{ c }}</option>{% endfor %}
+                                </select>
+                            </div>
+                            {# 必填/启用用 select 而非 checkbox：保证每行定长提交，后端按索引对齐取值 #}
+                            <div class="form-group flex-1">
+                                <label>必填</label>
+                                <select name="metrics__required" class="form-control" aria-label="是否必填">
+                                    <option value="0" {{ 'selected' if not m.required }}>否</option>
+                                    <option value="1" {{ 'selected' if m.required }}>是</option>
+                                </select>
+                            </div>
+                            <div class="form-group flex-1">
+                                <label>启用</label>
+                                <select name="metrics__enabled" class="form-control" aria-label="是否启用">
+                                    <option value="1" {{ 'selected' if m.enabled }}>是</option>
+                                    <option value="0" {{ 'selected' if not m.enabled }}>否</option>
+                                </select>
+                            </div>
+                            <button type="button" class="btn btn-outline btn-sm pack-del-row">删除</button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                <button type="button" class="btn btn-outline btn-sm" id="addMetricRow">+ 新增指标</button>
+                <div class="pack-save-bar">
+                    <button type="submit" class="btn btn-primary">保存指标定义</button>
+                    <button type="submit" class="btn btn-outline" formaction="{{ url_for('industry.pack_reset', pack_id=pack.id, section='metrics') }}">恢复内置默认</button>
+                </div>
+            </form>
+        </section>
+
+        <!-- ══════════ 公式参数 ══════════ -->
+        <section class="section" id="sec-formula">
+            <h3>公式参数</h3>
+            <form method="POST" action="{{ url_for('industry.pack_save', pack_id=pack.id, action='formula') }}" class="sales-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="form-group">
+                    <label for="waste_thr">损耗率预警阈值（0~1，如 0.15 = 15%）</label>
+                    <input type="number" id="waste_thr" name="formula_params__waste_rate_threshold" class="form-control"
+                           step="0.01" min="0.01" max="0.99" value="{{ pack.formula_params.get('waste_rate_threshold', default_waste_threshold) }}">
+                </div>
+                <div class="pack-save-bar">
+                    <button type="submit" class="btn btn-primary">保存公式参数</button>
+                    <button type="submit" class="btn btn-outline" formaction="{{ url_for('industry.pack_reset', pack_id=pack.id, section='formula_params') }}">恢复内置默认</button>
+                </div>
+            </form>
+        </section>
+
+        <!-- ══════════ 题库 ══════════ -->
+        <section class="section" id="sec-questions">
+            <h3>题库</h3>
+            <form method="POST" action="{{ url_for('industry.pack_save', pack_id=pack.id, action='questions') }}" class="sales-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div id="questionRows">
+                    {% for q in pack.questions %}
+                    <div class="pack-row">
+                        <div class="form-group">
+                            <label>题干</label>
+                            <input type="text" name="questions__q" class="form-control" aria-label="题干" value="{{ q.q }}" maxlength="500">
+                        </div>
+                        <div class="form-group">
+                            <label>参考答案</label>
+                            <textarea name="questions__a" class="form-control auto-grow" aria-label="参考答案" rows="2" maxlength="1000">{{ q.a }}</textarea>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group flex-1">
+                                <label>弱项标签</label>
+                                <input type="text" name="questions__weak" class="form-control" aria-label="弱项标签" value="{{ q.weak or '' }}" maxlength="50">
+                            </div>
+                            <button type="button" class="btn btn-outline btn-sm pack-del-row">删除</button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                <button type="button" class="btn btn-outline btn-sm" id="addQuestionRow">+ 新增题目</button>
+                <div class="pack-save-bar">
+                    <button type="submit" class="btn btn-primary">保存题库</button>
+                    <button type="submit" class="btn btn-outline" formaction="{{ url_for('industry.pack_reset', pack_id=pack.id, section='questions') }}">恢复内置默认</button>
+                </div>
+            </form>
+        </section>
+
+        <!-- ══════════ 情景剧本 ══════════ -->
+        <section class="section" id="sec-scenarios">
+            <h3>情景剧本</h3>
+            <form method="POST" action="{{ url_for('industry.pack_save', pack_id=pack.id, action='scenarios') }}" class="sales-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="form-group">
+                    <label for="scen_default">默认情景类型</label>
+                    <input type="text" id="scen_default" name="scenarios__default" class="form-control" value="{{ pack.scenario_default }}" maxlength="30">
+                </div>
+                <div id="scenarioRows">
+                    {% for r in pack.scenario_rows %}
+                    <div class="pack-row">
+                        <div class="form-row">
+                            <div class="form-group flex-1">
+                                <label>类型（小写英文）</label>
+                                <input type="text" name="scenarios__type" class="form-control" aria-label="情景类型（小写英文）" value="{{ r.type }}" maxlength="30">
+                            </div>
+                            <div class="form-group flex-1">
+                                <label>中文标签</label>
+                                <input type="text" name="scenarios__label" class="form-control" aria-label="情景中文标签" value="{{ r.label }}" maxlength="30">
+                            </div>
+                            <div class="form-group flex-1">
+                                <label>角色名</label>
+                                <input type="text" name="scenarios__role" class="form-control" aria-label="角色名" value="{{ r.role }}" maxlength="50">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group flex-1">
+                                <label>性格设定</label>
+                                <input type="text" name="scenarios__persona" class="form-control" aria-label="性格设定" value="{{ r.persona }}" maxlength="200">
+                            </div>
+                            <div class="form-group flex-1">
+                                <label>顾客目标</label>
+                                <input type="text" name="scenarios__goal" class="form-control" aria-label="顾客目标" value="{{ r.goal }}" maxlength="200">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>开场与话术（每行一句）</label>
+                            <textarea name="scenarios__lines" class="form-control auto-grow" aria-label="开场与话术（每行一句）" rows="4">{{ r.lines }}</textarea>
+                        </div>
+                        <button type="button" class="btn btn-outline btn-sm pack-del-row">删除</button>
+                    </div>
+                    {% endfor %}
+                </div>
+                <button type="button" class="btn btn-outline btn-sm" id="addScenarioRow">+ 新增情景</button>
+                <div class="pack-save-bar">
+                    <button type="submit" class="btn btn-primary">保存情景剧本</button>
+                    <button type="submit" class="btn btn-outline" formaction="{{ url_for('industry.pack_reset', pack_id=pack.id, section='scenarios') }}">恢复内置默认</button>
+                </div>
+            </form>
+        </section>
+
+        <!-- ══════════ 在售产品 ══════════ -->
+        <section class="section" id="sec-products">
+            <h3>在售产品</h3>
+            <p class="form-hint">此处为行业包产品模板（AI 出题 / 情景引用）；实际在售清单在「产品管理」维护。</p>
+            <form method="POST" action="{{ url_for('industry.pack_save', pack_id=pack.id, action='products') }}" class="sales-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div id="productRows">
+                    {% for p in pack.products %}
+                    <div class="form-row pack-row">
+                        <div class="form-group flex-2">
+                            <label>名称</label>
+                            <input type="text" name="products__name" class="form-control" aria-label="产品名称" value="{{ p.product_name }}" maxlength="100">
+                        </div>
+                        <div class="form-group flex-1">
+                            <label>单价</label>
+                            <input type="number" name="products__price" class="form-control" aria-label="产品单价" step="0.01" min="0" value="{{ p.unit_price if p.unit_price is not none else '' }}">
+                        </div>
+                        <div class="form-group flex-1">
+                            <label>成本价</label>
+                            <input type="number" name="products__cost" class="form-control" aria-label="产品成本价" step="0.01" min="0" value="{{ p.cost_price if p.cost_price is not none else '' }}">
+                        </div>
+                        <button type="button" class="btn btn-outline btn-sm pack-del-row">删除</button>
+                    </div>
+                    {% endfor %}
+                </div>
+                <button type="button" class="btn btn-outline btn-sm" id="addProductRow">+ 新增产品</button>
+                <div class="pack-save-bar">
+                    <button type="submit" class="btn btn-primary">保存在售产品</button>
+                    <button type="submit" class="btn btn-outline" formaction="{{ url_for('industry.pack_reset', pack_id=pack.id, section='products') }}">恢复内置默认</button>
+                </div>
+            </form>
+        </section>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// 行内新增/删除（无框架，模板克隆；快照剥离 main.js 故内联）
+(function () {
+    'use strict';
+    function bindAdd(btnId, containerId, tpl) {
+        var btn = document.getElementById(btnId);
+        var box = document.getElementById(containerId);
+        if (!btn || !box) return;
+        btn.addEventListener('click', function () {
+            var div = document.createElement('div');
+            div.innerHTML = tpl.trim();
+            box.appendChild(div.firstChild);
+        });
+    }
+    function bindDel(containerId) {
+        var box = document.getElementById(containerId);
+        if (!box) return;
+        box.addEventListener('click', function (e) {
+            var btn = e.target.closest('.pack-del-row');
+            if (btn && btn.type === 'button') btn.closest('.pack-row').remove();
+        });
+    }
+    bindAdd('addDomainRow', 'domainRows',
+        '<div class="form-row pack-row">' +
+        '<div class="form-group flex-1"><label>域名</label><input type="text" name="domains__name" class="form-control" aria-label="域名" maxlength="200"></div>' +
+        '<div class="form-group flex-2"><label>关键词（逗号分隔）</label><input type="text" name="domains__keywords" class="form-control" aria-label="知识域关键词（逗号分隔）"></div>' +
+        '<div class="form-group flex-2"><label>复习建议</label><input type="text" name="domains__tip" class="form-control" aria-label="复习建议" maxlength="200"></div>' +
+        '<button type="button" class="btn btn-outline btn-sm pack-del-row">删除</button></div>');
+    bindAdd('addQuestionRow', 'questionRows',
+        '<div class="pack-row">' +
+        '<div class="form-group"><label>题干</label><input type="text" name="questions__q" class="form-control" aria-label="题干" maxlength="500"></div>' +
+        '<div class="form-group"><label>参考答案</label><textarea name="questions__a" class="form-control auto-grow" aria-label="参考答案" rows="2" maxlength="1000"></textarea></div>' +
+        '<div class="form-row"><div class="form-group flex-1"><label>弱项标签</label><input type="text" name="questions__weak" class="form-control" aria-label="弱项标签" maxlength="50"></div>' +
+        '<button type="button" class="btn btn-outline btn-sm pack-del-row">删除</button></div></div>');
+    bindAdd('addProductRow', 'productRows',
+        '<div class="form-row pack-row">' +
+        '<div class="form-group flex-2"><label>名称</label><input type="text" name="products__name" class="form-control" aria-label="产品名称" maxlength="100"></div>' +
+        '<div class="form-group flex-1"><label>单价</label><input type="number" name="products__price" class="form-control" aria-label="产品单价" step="0.01" min="0"></div>' +
+        '<div class="form-group flex-1"><label>成本价</label><input type="number" name="products__cost" class="form-control" aria-label="产品成本价" step="0.01" min="0"></div>' +
+        '<button type="button" class="btn btn-outline btn-sm pack-del-row">删除</button></div>');
+    bindAdd('addScenarioRow', 'scenarioRows',
+        '<div class="pack-row"><div class="form-row">' +
+        '<div class="form-group flex-1"><label>类型（小写英文）</label><input type="text" name="scenarios__type" class="form-control" aria-label="情景类型（小写英文）" maxlength="30"></div>' +
+        '<div class="form-group flex-1"><label>中文标签</label><input type="text" name="scenarios__label" class="form-control" aria-label="情景中文标签" maxlength="30"></div>' +
+        '<div class="form-group flex-1"><label>角色名</label><input type="text" name="scenarios__role" class="form-control" aria-label="角色名" maxlength="50"></div></div>' +
+        '<div class="form-row"><div class="form-group flex-1"><label>性格设定</label><input type="text" name="scenarios__persona" class="form-control" aria-label="性格设定" maxlength="200"></div>' +
+        '<div class="form-group flex-1"><label>顾客目标</label><input type="text" name="scenarios__goal" class="form-control" aria-label="顾客目标" maxlength="200"></div></div>' +
+        '<div class="form-group"><label>开场与话术（每行一句）</label><textarea name="scenarios__lines" class="form-control auto-grow" aria-label="开场与话术（每行一句）" rows="4"></textarea></div>' +
+        '<button type="button" class="btn btn-outline btn-sm pack-del-row">删除</button></div>');
+    bindAdd('addMetricRow', 'metricRows',
+        '<div class="pack-row pack-metric-row"><div class="form-row">' +
+        '<div class="form-group flex-1"><label>键</label><input type="text" name="metrics__key" class="form-control" aria-label="指标键" maxlength="50"></div>' +
+        '<div class="form-group flex-1"><label>展示名</label><input type="text" name="metrics__label" class="form-control" aria-label="指标展示名" maxlength="50"></div>' +
+        '<div class="form-group flex-1"><label>类型</label><select name="metrics__value_type" class="form-control" aria-label="指标类型"><option value="number">number</option><option value="integer">integer</option><option value="text">text</option></select></div>' +
+        '<div class="form-group flex-1"><label>单位</label><input type="text" name="metrics__unit" class="form-control" aria-label="指标单位" maxlength="20"></div></div>' +
+        '<div class="form-row">' +
+        '<div class="form-group flex-1"><label>角色</label><select name="metrics__role" class="form-control" aria-label="指标角色"><option value="other">other</option><option value="quantity">quantity</option><option value="amount">amount</option><option value="stock">stock</option><option value="waste">waste</option><option value="cost">cost</option><option value="note">note</option></select></div>' +
+        '<div class="form-group flex-1"><label>聚合</label><select name="metrics__agg" class="form-control" aria-label="指标聚合方式"><option value="sum">sum</option><option value="avg">avg</option><option value="count">count</option><option value="none">none</option></select></div>' +
+        '<div class="form-group flex-1"><label>排序</label><input type="number" name="metrics__sort" class="form-control" aria-label="指标排序" value="0"></div>' +
+        '<div class="form-group flex-1"><label>映射列名</label><select name="metrics__legacy_column" class="form-control" aria-label="映射列名"><option value="">（自定义）</option></select></div>' +
+        '<div class="form-group flex-1"><label>必填</label><select name="metrics__required" class="form-control" aria-label="是否必填"><option value="0">否</option><option value="1">是</option></select></div>' +
+        '<div class="form-group flex-1"><label>启用</label><select name="metrics__enabled" class="form-control" aria-label="是否启用"><option value="1">是</option><option value="0">否</option></select></div>' +
+        '<button type="button" class="btn btn-outline btn-sm pack-del-row">删除</button></div></div>');
+    ['domainRows', 'questionRows', 'productRows', 'scenarioRows', 'metricRows'].forEach(bindDel);
+
+    // 指标删除：加隐藏键 metrics__delete（后端据此删行，骨架键后端拒绝）
+    var metricBox = document.getElementById('metricRows');
+    if (metricBox) {
+        metricBox.addEventListener('click', function (e) {
+            var btn = e.target.closest('.pack-del-row');
+            if (!btn || btn.type !== 'button') return;
+            var row = btn.closest('.pack-row');
+            var key = row.querySelector('[name="metrics__key"]').value;
+            if (key) {
+                var hidden = document.createElement('input');
+                hidden.type = 'hidden';
+                hidden.name = 'metrics__delete';
+                hidden.value = key;
+                row.appendChild(hidden);
+            }
+            row.classList.add('is-removed');
+            btn.textContent = '撤销删除';
+        });
+    }
+})();
+</script>
+{% endblock %}

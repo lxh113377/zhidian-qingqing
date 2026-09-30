@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% import "_icons.html" as icons %}
+{% import "admin/_agent_trace.html" as trace_t %}
+{% block title %}AI 智能助手 · 门店管理助手{% endblock %}
+{% block body_class %}is-admin{% endblock %}
+{% block content %}
+<div class="page-header">
+    <a href="{{ url_for('admin.dashboard') }}" class="btn-back">← 返回看板</a>
+    <h2>AI 智能助手</h2>
+</div>
+
+<p class="login-subtitle">
+    管理员经营问答：营收 / 销量 / 毛利 / 损耗 / 备货 / 服务知识库
+    <small class="text-muted"> · 仅供参考，最终决策请由店主判断</small>
+</p>
+
+<div class="chat-log" id="assistantLog" role="log" aria-live="polite" aria-label="与 AI 智能助手的对话">
+    {% for line in history %}
+        {% if line.startswith('问：') %}
+        <div class="bubble staff">{{ line[2:] }}</div>
+        {% elif line.startswith('答：') %}
+        <div class="bubble customer">{{ line[2:] }}</div>
+        {% endif %}
+    {% endfor %}
+</div>
+
+{# AI 决策轨迹（P6）：默认折叠的一行摘要，展开可见「意图 → 工具 → 结论」全链路 #}
+{{ trace_t.timeline(trace) }}
+
+<form method="POST" action="{{ url_for('ai.assistant') }}" class="chat-input-row"
+      id="assistantForm" data-ajax data-degraded-text="{{ degraded_text }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="text" name="ask" class="form-control auto-grow" placeholder="例如：这个月营收多少？明天备货建议？"
+           autocomplete="off" autocapitalize="off" enterkeyhint="send" required aria-label="提问输入">
+    <button type="submit" class="btn btn-primary">提问</button>
+</form>
+
+<div class="quick-questions">
+    <button type="button" class="btn btn-outline btn-xs" data-quick="本周营收多少？">营收</button>
+    <button type="button" class="btn btn-outline btn-xs" data-quick="门店毛利率是多少？">毛利</button>
+    <button type="button" class="btn btn-outline btn-xs" data-quick="近期有什么损耗异常吗？">损耗</button>
+    <button type="button" class="btn btn-outline btn-xs" data-quick="明天备货建议？">备货</button>
+    <button type="button" class="btn btn-outline btn-xs" data-quick="这周和上周比销量怎么样？">对比</button>
+    <button type="button" class="btn btn-outline btn-xs" data-quick="明天预计能卖多少{{ labels.unit }}？">预测</button>
+    <button type="button" class="btn btn-outline btn-xs" data-quick="哪些{{ labels.dimension }}卖得最差？">滞销</button>
+    <button type="button" class="btn btn-outline btn-xs" data-quick="{{ labels.sample_dimension }}卖得怎么样？">{{ labels.dimension }}</button>
+    <button type="button" class="btn btn-outline btn-xs" data-quick="谁的考核成绩最好？">考核</button>
+    <button type="button" class="btn btn-outline btn-xs" data-quick="顾客嫌贵砍价怎么应对？">话术</button>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ asset_url('js/assistant.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,17 @@
+[
+  {"product_name": "洗剪吹", "unit_price": 68.0, "cost_price": 12.0, "category": "美发"},
+  {"product_name": "单剪", "unit_price": 38.0, "cost_price": 6.0, "category": "美发"},
+  {"product_name": "头皮护理", "unit_price": 98.0, "cost_price": 22.0, "category": "护理"},
+  {"product_name": "焗油护理", "unit_price": 128.0, "cost_price": 30.0, "category": "护理"},
+  {"product_name": "染发(全头)", "unit_price": 268.0, "cost_price": 65.0, "category": "染烫"},
+  {"product_name": "烫发(中长发)", "unit_price": 398.0, "cost_price": 95.0, "category": "染烫"},
+  {"product_name": "接发", "unit_price": 480.0, "cost_price": 120.0, "category": "染烫"},
+  {"product_name": "基础美甲", "unit_price": 88.0, "cost_price": 18.0, "category": "美甲"},
+  {"product_name": "猫眼美甲", "unit_price": 158.0, "cost_price": 32.0, "category": "美甲"},
+  {"product_name": "法式美甲", "unit_price": 128.0, "cost_price": 25.0, "category": "美甲"},
+  {"product_name": "卸甲", "unit_price": 38.0, "cost_price": 6.0, "category": "美甲"},
+  {"product_name": "补甲", "unit_price": 58.0, "cost_price": 12.0, "category": "美甲"},
+  {"product_name": "面部清洁", "unit_price": 168.0, "cost_price": 35.0, "category": "美容"},
+  {"product_name": "肩颈按摩", "unit_price": 118.0, "cost_price": 20.0, "category": "美容"},
+  {"product_name": "头皮检测", "unit_price": 28.0, "cost_price": 5.0, "category": "检测"}
+]

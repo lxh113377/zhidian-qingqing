@@ -1,0 +1,3314 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>AI 经营分析 · 门店管理助手</title>
+    
+    <meta name="theme-color" content="#0B1B19">
+    <meta name="csrf-token" content="IjZmNDA5MjM3MzYyMjFmNjQ3NGQ2YWM3YjI5ZDVhZjlhMTQ4ZGQ4MDki.arikiw.QXZUscrLQZB7OGKigjYf59-hgsM">
+    <script>
+    // https 自愈（G2）：托管平台下发的预览链接是 http://，而生产环境的会话 Cookie
+    // 带 Secure 标记，浏览器在 http 页面会直接丢弃它 → 一登录就 400（CSRF 会话丢失）。
+    // 反向代理不上报 X-Forwarded-Proto，服务端无从判断，故在任何表单提交前由页面自升级。
+    // 本地开发（http://localhost / 127.0.0.1）跳过，避免本地无证书时被跳死。
+    (function () {
+        if (location.protocol !== 'http:') return;
+        var h = location.hostname;
+        if (h === 'localhost' || h === '127.0.0.1' || h === '[::1]') return;
+        location.replace('https://' + location.host + location.pathname + location.search + location.hash);
+    })();
+    </script>
+    <script>
+    // 主题初始化（渲染前执行，防闪烁）：手动选择优先，缺省默认「墨绿黑暗主题」（雾山青暗室）
+    (function () {
+        var t = null;
+        try { t = localStorage.getItem('ican-theme'); } catch (e) {}
+        if (t === 'dark' || t === 'light') {
+            document.documentElement.dataset.theme = t;
+        } else {
+            document.documentElement.dataset.theme = 'dark';
+        }
+        // 地址栏/状态栏颜色随主题：亮色雾山青 vs 墨绿黑（默认）
+        var meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) meta.content = document.documentElement.dataset.theme === 'light' ? '#0F766E' : '#0B1B19';
+    })();
+    </script>
+    
+    <style>
+/* 门店管理助手 — 移动端优先样式 */
+/* 适配微信内置浏览器 | V3 设计体系：「雾山青 · 茶室账房」
+   —— 单一主色青瓷 + 一点琥珀金（仅数据/警示语义）；哑光纸面 + 发丝分割线替代卡片堆叠；
+      引入间距/字阶/圆角/高程/动效令牌，静态面用发丝线、交互面才用卡片与投影。
+   兼容：保留 V2 全部选择器与 CSS 变量名（新增令牌附加，不改名）——模板/快照/图表零破坏。 */
+
+/* ── 断点阶梯（改动前先读本节）──────────────────────────────
+   本文件历史混用 max-width / min-width 两种写法。2026-09-23 逐块核验后的
+   有效阶梯如下（16 个布局断点块 / 133 行）：
+
+     ≤639px   手机档（窄屏全部调整：超窄机降档 / 决策舱纵向堆叠 / 店员网格单列 /
+                       图表降高 / 产品表卡片化 / 批量栏 / 决策网格单列）
+     ≥640px   平板档（行内编辑 4 列等）
+     ≥1024px  桌面档（后台菜单与店员网格 4 列、工具条切横排、容器放宽）
+     ≤1023px  窄平板（顶栏换行、行业包与门店切换器整行）—— 与 ≥640 有意重叠，非缺陷
+
+    ✅ 2026-09-23 已收敛为**两边界三档**：数值只剩 639 / 640 / 1023 / 1024，
+       即 2 个边界（640、1024）。此前 360/375/767 三档并入手机档，
+       820 扩到 1023，768 的桌面增强推迟到 1024。
+    ⚠️ 已知渲染变化（用户 2026-09-23 确认接受，并已重出三视口证据）：
+       · 768px：桌面增强（后台菜单 4 列 / 店员网格 4 列 / 工具条横排）在 768–1023 撤销
+       · 375px：超窄机降档并入手机档 ⇒ .admin-menu 3 列→2 列、首页主标题 3xl→2xl
+       若其他材料（PPT/PDF）里已嵌入旧的三视口截图，须同步替换，避免材料自相矛盾（R242）。
+    禁止再引入新数值。
+    */
+
+/* ═══════════ 1. 设计令牌（亮/暗双主题） ═══════════ */
+:root {
+    /* ── 1.1 品牌主色带「雾山青」：青瓷绿（琥珀金降级为数据/警示专用强调色） ── */
+    --primary: #0F766E;
+    --primary-light: #14B8A6;
+    --primary-dark: #0C5F58;
+    --primary-ink: #0A4841;
+    --primary-soft: rgba(15, 118, 110, .09);
+    --primary-soft-strong: rgba(15, 118, 110, .16);
+    --success: #059669;
+    --danger: #DC2626;
+    --warning: #B45309;
+    /* 语义状态色（成功/危险/警告/中性）— 双主题通过变量切换，避免各组件重复硬编码 */
+    --success-bg: #E6F6EF;
+    --success-text: #05603F;
+    --success-border: #B7E4CE;
+    --danger-bg: #FDECEC;
+    --danger-text: #94211F;
+    --danger-border: #F6C9C8;
+    --warning-bg: #FCF3E3;
+    --warning-text: #8A4B09;
+    --warning-border: #F0D7AE;
+    --neutral-bg: #EAEFED;
+    --neutral-text: #4B5B57;
+    /* AI 面板调色板（墨绿黑玻璃质感，不随主题切换） */
+    --ai-bg: linear-gradient(150deg, #04231F 0%, #0C3A34 58%, #10453D 100%);
+    --ai-text: #CFEFE9;
+    --ai-title: #6FE3D0;
+    --ai-border: rgba(45, 212, 191, .24);
+    --ai-card-bg: rgba(255, 255, 255, .055);
+    --ai-card-border: rgba(255, 255, 255, .07);
+    /* 品牌强调条（收敛为单一青瓷渐变；琥珀金只留给数据可视化） */
+    --brand-bar: linear-gradient(120deg, var(--primary-ink), var(--primary) 55%, var(--primary-light));
+    --text-disabled: #B6C0BD;
+    /* 渐变/深色面板上的反白文字（AI 面板标题、主色气泡、激活 tab） */
+    --on-primary: #fff;
+    /* ── 1.2 表面层级（低到高：page → surface → elevated） ── */
+    --bg: #F5F7F6;
+    --card-bg: #FFFFFF;
+    --surface-2: #F7FAF9;
+    --text: #16211F;
+    --text-light: #5B6B67;
+    --border: #E3E8E6;
+    --border-strong: #CFD8D5;
+    --th-bg: #F6F9F8;
+    --hover-bg: #EDF6F3;
+    /* 顶部导航（亮色：品牌青渐变；暗色：墨绿暗室） */
+    --nav-1: #0E6B63;
+    --nav-2: #0A4E48;
+    --nav-text: #FFFFFF;
+    --nav-border: transparent;
+    /* 品牌光晕（focus 环 / 主按钮投影 / hero 光斑） */
+    --glow: rgba(20, 184, 166, .18);
+    --glow-strong: rgba(13, 148, 136, .32);
+    --ring: 0 0 0 3px var(--glow);
+    /* ── 1.3 高程（静态面不用；仅浮层/交互用） ── */
+    --shadow-sm: 0 1px 2px rgba(16, 33, 31, .05);
+    --shadow-md: 0 2px 10px rgba(16, 33, 31, .07);
+    --shadow-lg: 0 12px 34px -8px rgba(16, 33, 31, .18);
+    --shadow-pop: 0 10px 30px -6px rgba(16, 33, 31, .22);
+    /* ── 1.4 圆角 ── */
+    --radius-xs: 6px;
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 22px;
+    --radius-full: 999px;
+    /* ── 1.5 间距阶（4 的倍数，统一节奏） ── */
+    --sp-1: 4px;  --sp-2: 8px;  --sp-3: 12px; --sp-4: 16px;
+    --sp-5: 20px; --sp-6: 24px; --sp-7: 28px; --sp-8: 32px; --sp-10: 40px;
+    /* ── 1.6 字阶（含行高/字重/字距，标题收紧、正文 1.65） ── */
+    --fs-2xs: 11px; --fs-xs: 12px; --fs-sm: 13px; --fs-base: 15px;
+    --fs-md: 16px;  --fs-lg: 18px; --fs-xl: 22px; --fs-2xl: 26px; --fs-3xl: 32px;
+    --lh-tight: 1.25; --lh-snug: 1.4; --lh-base: 1.65;
+    /* ── 1.7 动效（统一时长与缓动，尊重减少动态偏好） ── */
+    --dur-fast: 120ms; --dur: 200ms; --dur-slow: 340ms;
+    --ease-out: cubic-bezier(.22, .61, .36, 1);
+    --ease-spring: cubic-bezier(.34, 1.32, .5, 1);
+    /* ── 1.8 图表分类色板（ECharts 数据可视化专用；亮/暗双主题，看板/雷达经 cssVar 读取） ── */
+    --chart-1: #0F766E;   /* 青瓷主色 */
+    --chart-2: #D97706;   /* 琥珀（数据次位） */
+    --chart-3: #0E7490;   /* 天青 */
+    --chart-4: #9A3412;   /* 陶土 */
+    --chart-5: #4D7C0F;   /* 苔绿 */
+    --chart-6: #64748B;   /* 石板（兜底中性） */
+    --chart-split: rgba(22, 33, 31, .10);
+    --chart-axis: rgba(22, 33, 31, .30);
+    /* 主题切换过渡 */
+    color-scheme: light;
+}
+
+html[data-theme="dark"] {
+    --primary: #2DD4BF;
+    --primary-light: #5EEAD4;
+    --primary-dark: #14B8A6;
+    --primary-ink: #0D9488;
+    --primary-soft: rgba(45, 212, 191, .12);
+    --primary-soft-strong: rgba(45, 212, 191, .2);
+    --success: #34D399;
+    --danger: #F87171;
+    --warning: #FBBF24;
+    /* 语义状态色（暗色覆写） */
+    --success-bg: #06392C;
+    --success-text: #A7F3D0;
+    --success-border: #0B5140;
+    --danger-bg: #4A1917;
+    --danger-text: #FECACA;
+    --danger-border: #7F1D1D;
+    --warning-bg: #412806;
+    --warning-text: #FDE68A;
+    --warning-border: #6B420A;
+    --neutral-bg: #253B37;
+    --neutral-text: #C6D6D2;
+    /* 墨绿黑基板（青瓷暗室感）：page → surface → elevated 三级 */
+    --bg: #0A1513;
+    --card-bg: #12211F;
+    --surface-2: #17302C;
+    --text: #E4EBE9;
+    --text-light: #8CA09B;
+    --border: #1E3A34;
+    --border-strong: #2A4F47;
+    --th-bg: #0F1F1C;
+    --hover-bg: #17332E;
+    /* 顶部导航（暗色：压低饱和，避免整块荧光） */
+    --nav-1: #0F211E;
+    --nav-2: #0B1917;
+    --nav-text: #E4EBE9;
+    --nav-border: var(--border);
+    --glow: rgba(45, 212, 191, .22);
+    --glow-strong: rgba(45, 212, 191, .38);
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, .5);
+    --shadow-md: 0 2px 12px rgba(0, 0, 0, .5);
+    --shadow-lg: 0 14px 34px -8px rgba(0, 0, 0, .62);
+    --shadow-pop: 0 12px 32px -6px rgba(0, 0, 0, .7);
+    /* 图表分类色板（暗色：提高明度，保证深底可读） */
+    --chart-1: #2DD4BF;
+    --chart-2: #FBBF24;
+    --chart-3: #38BDF8;
+    --chart-4: #FB923C;
+    --chart-5: #A3E635;
+    --chart-6: #94A3B8;
+    --chart-split: rgba(228, 235, 233, .10);
+    --chart-axis: rgba(228, 235, 233, .30);
+    color-scheme: dark;
+}
+
+/* ═══════════ 2. 基础 ═══════════ */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-text-size-adjust: 100%;   /* iOS 横竖屏字体缩放兜底 */
+    text-size-adjust: 100%;
+    scroll-padding-top: 72px;          /* sticky 顶栏不遮挡锚点/焦点跳转 */
+}
+
+/* 键盘焦点环（无障碍）：非鼠标点击的聚焦醒目可见 */
+:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+}
+
+/* 卡片类按键（landing/AI 模式/管理菜单）键盘聚焦同样高亮 */
+.home-card:focus-visible, .mode-card:focus-visible,
+.menu-card:focus-visible, .home-card:active,
+.mode-card:active, .menu-card:active {
+    outline: 2px solid var(--primary);
+    outline-offset: 1px;
+}
+
+body {
+    /* 「雾山青」字体配对（零下载，性能红线内）：拉丁/数字优先特征字体 DIN，中文回落系统优字 */
+    font-family: "DIN Alternate", "Bahnschrift", "PingFang SC", "HarmonyOS Sans SC", "MiSans", "Segoe UI", "Microsoft YaHei", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: var(--lh-base);
+    font-size: var(--fs-base);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    transition: background-color var(--dur) ease, color var(--dur) ease;
+    /* iOS 11.0–11.2 只认 constant()（须写在 env() 之前），11.2+ 由 env() 覆盖 */
+    padding-bottom: constant(safe-area-inset-bottom);
+    padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* 标题节奏：收紧字距、压行高，与正文拉开层级 */
+h1, h2, h3, h4 {
+    line-height: var(--lh-tight);
+    letter-spacing: -.01em;
+    color: var(--text);
+}
+
+/* 跳过导航（键盘/读屏首站，视觉隐藏到聚焦才显示） */
+.skip-link {
+    position: absolute;
+    left: 12px;
+    top: -48px;
+    z-index: 999;
+    padding: 8px 14px;
+    border-radius: var(--radius-sm);
+    background: var(--primary-ink);
+    color: var(--on-primary);
+    font-size: var(--fs-sm);
+    text-decoration: none;
+    transition: top var(--dur-fast) var(--ease-out);
+}
+.skip-link:focus { top: 12px; }
+
+.container {
+    max-width: 480px;
+    margin: 0 auto;
+    /* 兼容 P1-3：svh 仅新内核支持，先落 vh 兜底，支持的内核再覆盖为小视口高度 */
+    min-height: 100vh;
+    min-height: 100svh;
+}
+
+/* 响应式加宽：管理员端 PC 投屏放宽 */
+@media (min-width: 1024px) {
+    body.is-admin .container { max-width: 960px; }
+    body.is-admin .main-content { padding: var(--sp-6) var(--sp-7); }
+}
+
+/* 数字等宽（金额/统计不跳动） */
+.num, .kpi-value, .stat-num { font-variant-numeric: tabular-nums; }
+
+/* 品牌 Logo（内联 SVG 杯标：渐变圆角底 + 白线条，亮/暗双主题通用） */
+.brand-logo {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: calc(var(--logo-size, 40px) * .28);
+    background: var(--brand-bar);
+    box-shadow: 0 2px 10px var(--glow-strong), inset 0 0 0 1px rgba(255, 255, 255, .18);
+    width: var(--logo-size, 40px);
+    height: var(--logo-size, 40px);
+    flex-shrink: 0;
+    color: var(--on-primary);
+}
+.brand-logo svg { width: 62%; height: 62%; display: block; }
+.brand-nav { --logo-size: 26px; box-shadow: none; }
+.brand-hero { --logo-size: 60px; margin-bottom: 12px; box-shadow: 0 6px 20px -4px var(--glow-strong), inset 0 0 0 1px rgba(255, 255, 255, .22); }
+
+/* ═══════════ 3. 顶部导航 ═══════════ */
+.top-nav {
+    background: linear-gradient(150deg, var(--nav-1) 0%, var(--nav-2) 100%);
+    color: var(--nav-text);
+    padding: var(--sp-3) var(--sp-4);
+    padding-top: calc(var(--sp-3) + constant(safe-area-inset-top));
+    padding-top: calc(var(--sp-3) + env(safe-area-inset-top));
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: -webkit-sticky;   /* iOS <13 需前缀，否则不吸顶 */
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    border-bottom: 1px solid var(--nav-border);
+    /* 滚动时以磨砂玻璃过渡，减弱整块色块的压迫感（不支持时优雅降级为纯色） */
+    -webkit-backdrop-filter: saturate(150%) blur(10px);
+    backdrop-filter: saturate(150%) blur(10px);
+}
+/* 滚动分层：内容贴到顶栏下方时给一层边界（base.html 内联脚本切 .scrolled） */
+.top-nav.scrolled { box-shadow: var(--shadow-md); }
+
+.nav-brand {
+    font-weight: 650;
+    font-size: var(--fs-md);
+    letter-spacing: .3px;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-2);
+}
+.brand-nav { margin-right: 2px; }
+
+.nav-user { display: flex; align-items: center; gap: var(--sp-3); font-size: var(--fs-sm); }
+
+/* P10：管理员顶部常驻行业包切换器（无需先进入配置页即可发现通用能力） */
+.pack-switcher {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    margin-left: auto;
+    margin-right: var(--sp-3);
+    font-size: var(--fs-xs);
+    color: var(--nav-text);
+}
+.pack-switcher label { opacity: .82; white-space: nowrap; }
+.pack-switcher select {
+    max-width: 180px;
+    padding: 5px 28px 5px 10px;
+    border-radius: var(--radius-full);
+    border: 1px solid rgba(255, 255, 255, .28);
+    background: rgba(255, 255, 255, .10);
+    color: var(--nav-text);
+    font: inherit;
+}
+.pack-switcher option { color: var(--text); background: var(--card-bg); }
+.btn-pack-switch {
+    padding: 5px 10px;
+    border-radius: var(--radius-full);
+    border: 1px solid rgba(255, 255, 255, .28);
+    background: none;
+    color: var(--nav-text);
+    font: inherit;
+    cursor: pointer;
+}
+.btn-pack-switch:hover { background: rgba(255, 255, 255, .10); }
+
+/* P7-E / S-13：退出改 POST 表单按钮，外观与旧 <a> 保持一致 */
+.logout-form { display: inline; margin: 0; }
+
+.btn-logout {
+    color: rgba(255, 255, 255, .88);
+    text-decoration: none;
+    background: none;
+    font-family: inherit;
+    cursor: pointer;
+    line-height: 1.5;
+    padding: 5px 11px;
+    border: 1px solid rgba(255, 255, 255, .26);
+    border-radius: var(--radius-full);
+    font-size: var(--fs-xs);
+    transition: color var(--dur-fast) ease, border-color var(--dur-fast) ease, background-color var(--dur-fast) ease;
+}
+html[data-theme="dark"] .btn-logout { color: var(--text-light); border-color: var(--border-strong); }
+.btn-logout:hover { color: var(--on-primary); border-color: rgba(255, 255, 255, .7); background: rgba(255, 255, 255, .1); }
+html[data-theme="dark"] .btn-logout:hover { color: var(--primary); border-color: var(--primary); background: var(--primary-soft); }
+
+/* 主题切换按钮（全局浮动 fab） */
+.theme-toggle {
+    width: 42px; height: 42px;
+    border-radius: 50%;
+    font-size: var(--fs-lg);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform var(--dur-fast) var(--ease-out), background-color var(--dur) ease, border-color var(--dur) ease;
+    background: var(--card-bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-pop);
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+}
+.theme-toggle:hover { transform: rotate(15deg) scale(1.08); }
+.theme-toggle:active { transform: scale(.92); }
+.theme-fab {
+    position: fixed;
+    right: 16px;
+    bottom: calc(16px + constant(safe-area-inset-bottom));
+    bottom: calc(16px + env(safe-area-inset-bottom));
+    z-index: 200;
+}
+/* 主题按钮线性图标（SVG）：默认墨绿黑暗显示太阳（点击切亮），亮色显示月亮（点击切暗） */
+.theme-toggle .icon-sun { display: block; }
+.theme-toggle .icon-moon { display: none; }
+html[data-theme="light"] .theme-toggle .icon-sun { display: none; }
+html[data-theme="light"] .theme-toggle .icon-moon { display: block; }
+
+/* ═══════════ 4. Flash 消息 ═══════════ */
+.flash-messages { padding: var(--sp-2) var(--sp-4); }
+.flash-messages:empty { padding: 0; }
+
+.flash {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--sp-2);
+    padding: 11px 14px;
+    border-radius: var(--radius-md);
+    margin-bottom: var(--sp-2);
+    font-size: var(--fs-sm);
+    line-height: var(--lh-snug);
+    border-left: 3px solid currentColor;
+    animation: fadeIn var(--dur-slow) var(--ease-out);
+}
+.flash svg { flex: none; margin-top: 1px; }
+
+.flash-success { background: var(--success-bg); color: var(--success-text); border-color: var(--success); }
+.flash-danger  { background: var(--danger-bg);  color: var(--danger-text);  border-color: var(--danger); }
+.flash-warning { background: var(--warning-bg); color: var(--warning-text); border-color: var(--warning); }
+
+/* 错误/警告提示的手动关闭按钮（不自动消失，保证可重读） */
+.flash-close {
+    margin-left: auto; flex: none;
+    padding: 2px; border: 0; background: transparent; cursor: pointer;
+    color: inherit; opacity: .6; line-height: 0; border-radius: var(--radius-sm);
+}
+.flash-close:hover, .flash-close:focus-visible { opacity: 1; }
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* ═══════════ 5. 主内容 ═══════════ */
+.main-content { padding: var(--sp-4); }
+
+/* ═══════════ 6. 登录页 ═══════════ */
+.login-page {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 80vh; /* 同上：旧内核兜底 */
+    min-height: 80svh;
+    padding: var(--sp-5);
+}
+
+.login-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl);
+    padding: var(--sp-8) var(--sp-6);
+    width: 100%;
+    box-shadow: var(--shadow-lg);
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+    transition: background-color var(--dur) ease, border-color var(--dur) ease;
+}
+/* 顶部渐变条 */
+.login-card::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 4px;
+    background: var(--brand-bar);
+}
+
+.login-card h1 { font-size: var(--fs-2xl); font-weight: 750; margin-bottom: var(--sp-2); }
+
+.login-subtitle { color: var(--text-light); font-size: var(--fs-sm); margin-bottom: var(--sp-4); }
+
+.login-form { text-align: left; margin-top: var(--sp-5); }
+
+/* 登录身份分段选择：替代下拉框，两选项并排、激活态品牌高亮 */
+.role-seg { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-2); }
+.role-opt {
+    display: flex; align-items: center; gap: var(--sp-2);
+    padding: var(--sp-3);
+    border: 1.5px solid var(--border-strong);
+    border-radius: var(--radius-md);
+    background: var(--card-bg);
+    cursor: pointer;
+    transition: border-color var(--dur-fast) ease, background-color var(--dur-fast) ease, box-shadow var(--dur-fast) ease;
+}
+.role-opt input { position: absolute; opacity: 0; pointer-events: none; }
+.role-opt-icon { color: var(--text-light); transition: color var(--dur-fast) ease; flex: none; }
+.role-opt-text { display: flex; flex-direction: column; line-height: 1.25; }
+.role-opt-text strong { font-size: var(--fs-sm); color: var(--text); }
+.role-opt-text small { font-size: var(--fs-2xs); color: var(--text-light); }
+.role-opt.is-active { border-color: var(--primary); background: var(--primary-soft); box-shadow: var(--ring); }
+.role-opt.is-active .role-opt-icon { color: var(--primary); }
+.role-opt.is-active .role-opt-text strong { color: var(--primary-ink); }
+.role-opt:focus-within { border-color: var(--primary); box-shadow: var(--ring); }
+
+.login-hint {
+    margin-top: var(--sp-5);
+    padding: var(--sp-3) var(--sp-4);
+    background: var(--surface-2);
+    border-radius: var(--radius-md);
+    font-size: var(--fs-xs);
+    line-height: var(--lh-snug);
+    color: var(--text-light);
+    text-align: left;
+    border: 1px solid var(--border);
+}
+.login-hint p { margin-bottom: 2px; }
+.login-hint code {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xs);
+    padding: 1px 6px;
+    font-size: var(--fs-xs);
+    color: var(--text);
+}
+
+/* ═══════════ 7. 表单 ═══════════ */
+.form-group { margin-bottom: var(--sp-4); }
+
+/* `.form-label` 与 `.form-group label` 同款样式：用于「不是控件」的分组标题
+   （如登录页身份分段）。避免出现没有任何关联控件的孤立 <label> 被读屏误读。 */
+.form-label,
+.form-group label {
+    display: block;
+    font-size: var(--fs-sm);
+    font-weight: 600;
+    margin-bottom: 6px;
+    color: var(--text);
+    letter-spacing: .01em;
+}
+
+.form-control {
+    width: 100%;
+    padding: 11px 14px;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-md);
+    font-size: var(--fs-base);
+    background: var(--card-bg);
+    color: var(--text);
+    transition: border-color var(--dur-fast) ease, box-shadow var(--dur-fast) ease, background-color var(--dur) ease;
+    font-family: inherit;
+    min-height: 44px; /* 触控目标 */
+}
+
+.form-control:hover { border-color: var(--primary-soft-strong); }
+
+.form-control:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: var(--ring);
+}
+
+.form-control::placeholder { color: var(--text-light); opacity: .72; }
+
+textarea.form-control { resize: vertical; min-height: 76px; line-height: var(--lh-snug); }
+
+/* 自适应高度文本域（AI 提问框等；配合页内脚本 or 浏览器默认） */
+.auto-grow { overflow-y: hidden; max-height: 200px; }
+
+select.form-control {
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='currentColor' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 34px;
+}
+
+/* 下拉箭头走 form-control 的文本色（currentColor），亮/暗主题自动跟随，不再硬编码 */
+
+.form-hint {
+    display: block;
+    font-size: var(--fs-xs);
+    color: var(--text-light);
+    margin-top: 3px;
+}
+
+select.form-control option:disabled { color: var(--text-disabled); }
+
+input[type="checkbox"], input[type="radio"] { accent-color: var(--primary); }
+
+/* ═══════════ 8. 按钮（按压态 + loading） ═══════════ */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 10px 20px;
+    border: none;
+    border-radius: var(--radius-md);
+    font-size: var(--fs-base);
+    font-weight: 600;
+    font-family: inherit;
+    letter-spacing: .01em;
+    cursor: pointer;
+    text-decoration: none;
+    text-align: center;
+    transition: transform var(--dur-fast) var(--ease-out), filter var(--dur-fast) ease, background-color var(--dur-fast) ease, border-color var(--dur-fast) ease, box-shadow var(--dur-fast) ease;
+    min-height: 44px;  /* 触控目标 */
+    -webkit-user-select: none;   /* iOS Safari 需前缀，否则长按仍可选中 */
+    user-select: none;
+}
+
+.btn:active { transform: scale(.97); }
+
+.btn-primary {
+    background: linear-gradient(140deg, var(--primary-dark), var(--primary));
+    color: var(--on-primary);
+    box-shadow: 0 4px 14px -4px var(--glow-strong);
+}
+
+.btn-primary:hover { filter: brightness(1.07); }
+
+.btn-block { display: flex; width: 100%; }
+
+.btn-outline {
+    background: var(--card-bg);
+    color: var(--primary);
+    border: 1px solid var(--border-strong);
+}
+.btn-outline:hover { background: var(--hover-bg); border-color: var(--primary); }
+
+.btn-danger  { background: var(--danger);  color: #fff; }
+.btn-success { background: var(--success); color: #fff; }
+.btn-danger:hover, .btn-success:hover { filter: brightness(1.08); }
+
+.btn-sm { padding: 5px 12px; font-size: var(--fs-xs); border-radius: var(--radius-sm); min-height: 34px; }
+
+/* 更小尺寸按钮（AI 助手快捷提问等辅助入口）：保 32px 触控基线 */
+.btn-xs { padding: 5px 12px; font-size: var(--fs-xs); border-radius: var(--radius-full); min-height: 32px; }
+
+/* AI 助手快捷提问容器：横向排列，可换行 */
+.quick-questions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--sp-2);
+    margin-top: var(--sp-3);
+}
+.quick-questions .btn { pointer-events: auto; }
+
+.btn.loading, .btn:disabled {
+    opacity: .6;
+    pointer-events: none;
+    position: relative;
+}
+
+.btn-back {
+    color: var(--primary);
+    text-decoration: none;
+    font-size: var(--fs-sm);
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    margin-bottom: var(--sp-2);
+    min-height: 32px;
+}
+.btn-back:hover { text-decoration: underline; }
+
+/* ═══════════ 9. Section / 表面 / 指标 / 列表 ═══════════ */
+.section { margin-top: var(--sp-6); }
+.section h3 {
+    font-size: var(--fs-md);
+    font-weight: 650;
+    margin-bottom: var(--sp-3);
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+}
+
+/* 经营分析报告分节标题（AI 经营分析页用，与页面层级一致） */
+.analysis-sec {
+    margin: var(--sp-4) 0 6px;
+    font-size: var(--fs-sm);
+    font-weight: 700;
+    color: var(--primary);
+    letter-spacing: .01em;
+}
+.analysis-sec + p { margin-top: 2px; }
+
+/* 指标带：单一表面由发丝线分割（替代卡片堆叠，奇数张也整齐） */
+.stat-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(112px, 1fr));
+    gap: 1px;
+    margin-top: var(--sp-2);
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+}
+
+.stat-card {
+    background: var(--card-bg);
+    border: none;
+    border-radius: 0;
+    padding: var(--sp-4) var(--sp-2);
+    text-align: center;
+    box-shadow: none;
+    transition: background-color var(--dur) ease;
+}
+.stat-card:hover { background: var(--surface-2); }
+
+/* KPI 主卡差异化（总营收/毛利率/预测准确率）：品牌渐变底，区别于普通面 */
+.stat-card--accent {
+    background: linear-gradient(150deg, var(--primary-ink), var(--primary) 70%, var(--primary-dark));
+    border: none;
+    color: var(--on-primary);
+}
+.stat-card--accent .stat-num { color: var(--on-primary); }
+.stat-card--accent .stat-label { color: rgba(255, 255, 255, .82); }
+.stat-card--accent .stat-label small { color: rgba(255, 255, 255, .68); }
+.stat-card--accent:hover { background: linear-gradient(150deg, var(--primary-ink), var(--primary) 70%, var(--primary-dark)); filter: brightness(1.05); }
+
+.stat-num {
+    font-size: var(--fs-xl);
+    font-weight: 750;
+    color: var(--primary);
+    line-height: 1.1;
+    letter-spacing: -.02em;
+}
+
+.stat-label { font-size: var(--fs-2xs); color: var(--text-light); margin-top: 5px; line-height: var(--lh-snug); }
+.stat-label small { display: block; font-size: 10px; opacity: .85; margin-top: 2px; }
+
+/* 记录列表：单一表面 + 发丝分割行（静态信息不用卡片） */
+.record-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    transition: background-color var(--dur) ease, border-color var(--dur) ease;
+}
+
+.record-item {
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--border);
+    border-radius: 0;
+    padding: var(--sp-3) var(--sp-4);
+    box-shadow: none;
+    transition: background-color var(--dur) ease;
+}
+.record-item:first-child { border-radius: var(--radius-lg) var(--radius-lg) 0 0; }
+.record-item:last-child { border-bottom: none; border-radius: 0 0 var(--radius-lg) var(--radius-lg); }
+.record-item:hover { background: var(--surface-2); }
+
+.record-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--sp-2);
+    margin-bottom: 4px;
+}
+
+.record-detail { font-size: var(--fs-sm); color: var(--text-light); font-variant-numeric: tabular-nums; }
+.record-note { font-size: var(--fs-xs); color: var(--warning-text); margin-top: 5px; line-height: var(--lh-snug); }
+/* 中性备注（非损耗预警语义）：如 AI 点评、一般说明 */
+.record-note.neutral { color: var(--text-light); }
+.product-name { font-size: var(--fs-sm); font-weight: 600; color: var(--text); }
+
+/* Badge */
+.badge {
+    display: inline-block;
+    padding: 2px 9px;
+    border-radius: var(--radius-full);
+    font-size: var(--fs-2xs);
+    font-weight: 600;
+    letter-spacing: .01em;
+    white-space: nowrap;
+}
+
+.badge-success { background: var(--success-bg); color: var(--success-text); }
+.badge-danger  { background: var(--danger-bg);  color: var(--danger-text); }
+.badge-secondary { background: var(--neutral-bg); color: var(--neutral-text); }
+.badge-warning { background: var(--warning-bg); color: var(--warning-text); }
+
+/* 信息卡（键值信息集中展示，唯一表面） */
+.info-card {
+    background: var(--card-bg);
+    border-radius: var(--radius-md);
+    padding: var(--sp-3) var(--sp-4);
+    border: 1px solid var(--border);
+}
+.info-card p { margin-bottom: 4px; font-size: var(--fs-sm); }
+.info-card p:last-child { margin-bottom: 0; }
+
+/* ═══════════ 10. 产品首页 landing ═══════════ */
+.landing {
+    max-width: 560px;
+    margin: 0 auto;
+    padding: var(--sp-8) var(--sp-4) var(--sp-6);
+    text-align: center;
+}
+
+.home-hero { margin-bottom: var(--sp-8); position: relative; }
+
+/* hero 光晕 */
+.home-hero::before {
+    content: "";
+    position: absolute;
+    top: -40px; left: 50%;
+    transform: translateX(-50%);
+    width: 300px; height: 300px;
+    background: radial-gradient(circle, var(--glow) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: -1;
+}
+/* hero 网点氛围层（茶铺帘布质感，低对比不干扰文字） */
+.home-hero::after {
+    content: "";
+    position: absolute;
+    top: -8px; right: -20px; bottom: -8px; left: -20px;  /* inset 简写无前缀回退 → 拆四值保老内核 */
+    inset: -8px -20px;
+    background-image: radial-gradient(var(--glow-strong) 1px, transparent 1px);
+    background-size: 18px 18px;
+    pointer-events: none;
+    z-index: -1;
+    -webkit-mask-image: linear-gradient(180deg, rgba(0, 0, 0, .9), transparent 88%);
+            mask-image: linear-gradient(180deg, rgba(0, 0, 0, .9), transparent 88%);
+}
+
+.home-hero h1 { font-size: var(--fs-3xl); font-weight: 800; letter-spacing: -.02em; margin: 0 0 var(--sp-3); color: var(--text); }
+
+/* 通用品牌标语 chip（landing / 登录卡共用） */
+.chip {
+    display: inline-block;
+    padding: 4px 14px;
+    border-radius: var(--radius-full);
+    background: var(--primary-soft);
+    color: var(--primary);
+    border: 1px solid var(--primary-soft-strong);
+    font-size: var(--fs-xs);
+    font-weight: 600;
+    margin-bottom: var(--sp-3);
+}
+
+.home-desc { font-size: var(--fs-sm); color: var(--text-light); margin: 0; line-height: var(--lh-base); }
+
+.home-actions { display: flex; flex-direction: column; gap: var(--sp-3); margin-bottom: var(--sp-6); }
+
+.home-card {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-4);
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: var(--sp-4) var(--sp-4);
+    text-align: left;
+    text-decoration: none;
+    color: var(--text);
+    box-shadow: var(--shadow-sm);
+    transition: transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) ease, border-color var(--dur-fast) ease, background-color var(--dur) ease;
+}
+
+.home-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); border-color: var(--border-strong); }
+.home-card:active { transform: scale(.98); }
+
+.home-card-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 52px;
+    height: 52px;
+    border-radius: var(--radius-md);
+    background: var(--primary-soft);
+    color: var(--primary);
+}
+.home-card-icon svg { color: var(--primary); }
+.home-card-staff .home-card-icon svg { color: var(--success); }
+
+.home-card-text { min-width: 0; }
+.home-card-text strong { display: block; font-size: var(--fs-md); font-weight: 650; color: var(--text); }
+
+.home-card-text small {
+    display: block;
+    margin-top: 4px;
+    font-size: var(--fs-xs);
+    color: var(--text-light);
+    line-height: var(--lh-snug);
+}
+
+.home-card-admin { border-left: 3px solid var(--primary); }
+.home-card-staff { border-left: 3px solid var(--success); }
+.home-card-staff .home-card-icon { background: var(--success-bg); }
+
+.home-features {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: var(--sp-2);
+    margin-bottom: var(--sp-5);
+}
+
+.home-features .feature {
+    display: inline-flex;
+    align-items: center;
+    font-size: var(--fs-xs);
+    color: var(--text-light);
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-full);
+    padding: 6px 12px;
+}
+.home-features .feature span { display: inline-flex; align-items: center; margin-right: 5px; color: var(--primary); }
+.home-features .feature span svg { display: block; }
+
+.home-hint { font-size: var(--fs-xs); color: var(--text-light); }
+
+.home-hint code {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xs);
+    padding: 1px 6px;
+    font-size: var(--fs-xs);
+    color: var(--text);
+}
+
+/* ═══════════ 11. 空状态 / 分页 ═══════════ */
+.empty-state {
+    text-align: center;
+    padding: var(--sp-10) var(--sp-5);
+    color: var(--text-light);
+}
+.empty-state p { margin-bottom: var(--sp-4); font-size: var(--fs-sm); }
+.empty-state h2 { font-size: var(--fs-lg); margin-bottom: var(--sp-2); color: var(--text); }
+
+.pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: var(--sp-3);
+    margin-top: var(--sp-5);
+}
+.page-info { font-size: var(--fs-sm); color: var(--text-light); }
+
+/* ── 以下基础工具类从 style.css 复制而来 ──
+   原因：它们属于「首屏即用」（跳转链接 / 视觉隐藏文本 / 店员端底部 Tab），
+   若随 style.css 异步到达，会出现「跳到主要内容」链接可见、隐藏文本外露等闪烁。
+   内容与 style.css 中的同名规则保持一致；两处改动时请同步。 */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+.bottom-tabs {
+    position: fixed; left: 0; right: 0; bottom: 0;
+    z-index: 100; display: flex;
+    background: var(--card-bg);
+    border-top: 1px solid var(--border);
+    padding-bottom: constant(safe-area-inset-bottom);
+    padding-bottom: env(safe-area-inset-bottom);
+    -webkit-backdrop-filter: saturate(150%) blur(12px);
+    backdrop-filter: saturate(150%) blur(12px);
+}
+.tab-item {
+    position: relative;
+    flex: 1; display: flex; flex-direction: column; align-items: center;
+    gap: 3px; padding: 10px 0 8px; text-decoration: none;
+    color: var(--text-light); font-size: var(--fs-2xs);
+    min-height: 56px;
+    transition: color var(--dur-fast) ease;
+}
+
+
+/* 快照翻页导航（仅演示快照集页面） */
+.snap-nav{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);display:flex;gap:4px;
+  background:var(--card-bg);border:1px solid var(--border);border-radius:999px;padding:4px 6px 4px 10px;
+  box-shadow:var(--shadow-lg);z-index:300;font-size:12px;white-space:nowrap}
+.snap-nav a{color:var(--primary);text-decoration:none;padding:4px 10px;border-radius:999px;display:inline-flex;align-items:center}
+.snap-nav a:hover{background:var(--hover-bg)}
+.snap-nav a.disabled{pointer-events:none;color:var(--text-light);opacity:.5}
+/* 静态只读角标（U4）：与可点击导航区分，避免「按钮坏了」误读 */
+.snap-hint{position:fixed;left:12px;bottom:12px;z-index:300;background:var(--card-bg);
+  color:var(--text-light);border:1px solid var(--border);border-radius:999px;
+  padding:4px 10px;font-size:12px;box-shadow:var(--shadow-sm);max-width:60vw;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+</style>
+    <style>
+/* ═══════════ 12. 管理员 ═══════════ */
+.admin-menu {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--sp-3);
+    margin-bottom: var(--sp-5);
+}
+@media (min-width: 1024px) {
+    body.is-admin .admin-menu { grid-template-columns: repeat(4, 1fr); }
+}
+
+.menu-card {
+    background: var(--card-bg);
+    border-radius: var(--radius-md);
+    padding: var(--sp-5) var(--sp-3);
+    text-align: center;
+    text-decoration: none;
+    color: var(--text);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-sm);
+    transition: transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) ease, border-color var(--dur-fast) ease;
+}
+
+.menu-card:hover {
+    border-color: var(--primary);
+    box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
+}
+.menu-card:active { transform: scale(.97); }
+
+.menu-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px; height: 44px;
+    margin: 0 auto var(--sp-2);
+    border-radius: var(--radius-md);
+    background: var(--primary-soft);
+    color: var(--primary);
+}
+.menu-icon svg { color: var(--primary); }
+.menu-text { font-size: var(--fs-xs); font-weight: 600; }
+
+/* 店员网格 */
+.staff-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--sp-2); }
+@media (min-width: 1024px) {
+    body.is-admin .staff-grid { grid-template-columns: repeat(4, 1fr); }
+}
+/* 窄屏单列：店员卡内含「重置密码」表单，两列会挤压输入区 */
+@media (max-width: 639px) {
+    .staff-grid { grid-template-columns: 1fr; }
+}
+
+.staff-card {
+    background: var(--card-bg);
+    border-radius: var(--radius-md);
+    padding: var(--sp-3);
+    border: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    transition: background-color var(--dur) ease, border-color var(--dur-fast) ease;
+}
+.staff-card:hover { border-color: var(--border-strong); }
+
+.staff-card.inactive { opacity: .62; }
+.staff-card small { color: var(--text-light); font-size: var(--fs-xs); }
+
+.status {
+    font-size: var(--fs-2xs);
+    padding: 2px 8px;
+    border-radius: var(--radius-full);
+    display: inline-block;
+    width: fit-content;
+    font-weight: 600;
+}
+.status.active { background: var(--success-bg); color: var(--success-text); }
+.status.inactive { background: var(--danger-bg); color: var(--danger-text); }
+
+/* ═══════════ 13. 表格 / 内联表单 / 页头 / 分段控件 ═══════════ */
+.table-responsive { overflow-x: auto; margin-top: var(--sp-3); -webkit-overflow-scrolling: touch; }
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--fs-sm);
+    background: var(--card-bg);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    border: 1px solid var(--border);
+}
+
+.table th {
+    background: var(--th-bg);
+    padding: 10px 10px;
+    text-align: left;
+    font-weight: 650;
+    font-size: var(--fs-2xs);
+    letter-spacing: .04em;
+    text-transform: none;
+    color: var(--text-light);
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+}
+
+.table td { padding: 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.table tbody tr { transition: background-color var(--dur-fast) ease; }
+.table tbody tr:hover { background: var(--surface-2); }
+.table tr:last-child td { border-bottom: none; }
+.table tr.inactive { opacity: .5; }
+
+/* 内联表单 */
+.inline-form { margin-bottom: var(--sp-3); }
+.form-row { display: flex; gap: var(--sp-2); flex-wrap: wrap; }
+.form-row .form-control { flex: 1; min-width: 0; }
+
+/* 页面头 / 导航链接 / 日期头 */
+.page-header { margin-bottom: var(--sp-4); }
+.page-header h2 { font-size: var(--fs-lg); font-weight: 700; }
+
+/* 时间区间分段控件（看板筛选） */
+.seg-bar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 4px; }
+.seg {
+    padding: 6px 13px;
+    font-size: var(--fs-xs);
+    font-weight: 600;
+    border-radius: var(--radius-full);
+    border: 1px solid var(--border);
+    color: var(--text-light);
+    background: var(--card-bg);
+    text-decoration: none;
+    transition: color var(--dur-fast) ease, border-color var(--dur-fast) ease, background-color var(--dur-fast) ease;
+}
+.seg:hover { border-color: var(--primary); color: var(--primary); }
+.seg.active {
+    background: var(--primary);
+    color: var(--on-primary);
+    border-color: var(--primary);
+}
+.range-note { font-size: var(--fs-xs); color: var(--text-light); margin: 4px 0 var(--sp-3); }
+.seg-export { margin-left: auto; }
+.nav-links { margin-top: var(--sp-5); display: flex; flex-direction: column; gap: var(--sp-3); }
+.date-header h2 { font-size: var(--fs-lg); margin-bottom: var(--sp-4); }
+.date-header h2 small { font-size: var(--fs-sm); color: var(--text-light); font-weight: normal; }
+
+/* 销售表单 */
+.sales-form {
+    background: var(--card-bg);
+    border-radius: var(--radius-lg);
+    padding: var(--sp-4);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-sm);
+    margin-bottom: var(--sp-4);
+    transition: background-color var(--dur) ease, border-color var(--dur) ease;
+}
+
+/* 填报表单分组标题：上下留白 + 品牌竖线，形成「销售 / 原料 / 备注」节奏 */
+.form-section-title {
+    font-size: var(--fs-xs);
+    font-weight: 700;
+    color: var(--primary);
+    letter-spacing: .02em;
+    margin: var(--sp-4) 0 var(--sp-3);
+    padding-left: 8px;
+    border-left: 3px solid var(--primary);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.sales-form .form-section-title:first-of-type { margin-top: 2px; }
+
+/* ═══════════ 14. AI 经营建议 ═══════════ */
+.ai-box {
+    background: var(--ai-bg);
+    border-radius: var(--radius-lg);
+    padding: var(--sp-4);
+    margin: var(--sp-3) 0;
+    color: var(--ai-text);
+    box-shadow: var(--shadow-lg);
+    border: 1px solid var(--ai-border);
+}
+.ai-box h4 { margin: 0 0 var(--sp-3); font-size: var(--fs-base); font-weight: 650; color: var(--on-primary); display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
+.ai-box h4 svg { flex-shrink: 0; }
+.ai-card {
+    background: var(--ai-card-bg);
+    border-radius: var(--radius-md);
+    padding: 11px 13px;
+    margin-bottom: var(--sp-2);
+    border: 1px solid var(--ai-card-border);
+}
+.ai-card:last-child { margin-bottom: 0; }
+.ai-title { font-size: var(--fs-sm); font-weight: 650; color: var(--ai-title); margin-bottom: 5px; display: flex; align-items: center; gap: 5px; }
+.ai-title svg { flex-shrink: 0; }
+.ai-text {
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-family: inherit;
+    font-size: var(--fs-sm);
+    line-height: var(--lh-base);
+    margin: 0;
+    color: var(--ai-text);
+    font-variant-numeric: tabular-nums;
+}
+.ai-text svg { vertical-align: -2px; }
+
+/* ═══════════ 15. AI 培训模块 ═══════════ */
+.mode-grid { display: grid; grid-template-columns: 1fr; gap: var(--sp-3); margin: var(--sp-3) 0; }
+
+.mode-card {
+    background: var(--card-bg);
+    border-radius: var(--radius-lg);
+    padding: var(--sp-4);
+    border: 1px solid var(--border);
+    text-decoration: none;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: var(--sp-4);
+    position: relative;
+    overflow: hidden;
+    transition: transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) ease, border-color var(--dur-fast) ease;
+}
+/* 左缘品牌强调线（mode 卡 hover 时点亮） */
+.mode-card::before {
+    content: "";
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+    background: var(--brand-bar);
+    opacity: 0;
+    transition: opacity var(--dur) ease;
+}
+.mode-card:hover::before { opacity: 1; }
+.mode-card:hover { border-color: var(--primary); box-shadow: var(--shadow-md); transform: translateY(-2px); }
+.mode-card:active { transform: scale(.98); }
+.mode-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 48px; height: 48px;
+    border-radius: var(--radius-md);
+    background: var(--primary-soft);
+}
+.mode-icon svg { color: var(--primary); }
+.mode-text { min-width: 0; }
+.mode-text strong { display: block; font-size: var(--fs-base); font-weight: 650; margin-bottom: 2px; }
+.mode-text small { color: var(--text-light); font-size: var(--fs-xs); line-height: var(--lh-snug); }
+
+/* 问答进度（含进度条） */
+.q-progress { font-size: var(--fs-sm); color: var(--text-light); margin-bottom: var(--sp-2); }
+.q-bar {
+    height: 6px;
+    background: var(--neutral-bg);
+    border-radius: var(--radius-full);
+    overflow: hidden;
+    margin-bottom: var(--sp-3);
+}
+.q-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary-dark), var(--primary-light));
+    border-radius: var(--radius-full);
+    position: relative;
+    overflow: hidden;
+    transition: width var(--dur-slow) var(--ease-out);
+}
+/* 进度条高光扫过（尊重减少动态偏好） */
+.q-bar-fill::after {
+    content: "";
+    position: absolute;
+    top: 0; right: 0; bottom: 0; left: 0;
+    inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .38), transparent);
+    transform: translateX(-100%);
+    animation: shine 2.6s ease-in-out infinite;
+}
+@keyframes shine {
+    0% { transform: translateX(-100%); }
+    60%, 100% { transform: translateX(100%); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .q-bar-fill::after { animation: none; }
+}
+
+.q-box {
+    background: var(--card-bg);
+    border-radius: var(--radius-lg);
+    padding: var(--sp-4);
+    border: 1px solid var(--border);
+    margin-bottom: var(--sp-4);
+}
+.q-box .question { font-size: var(--fs-md); font-weight: 650; margin-bottom: var(--sp-3); line-height: var(--lh-snug); }
+
+.feedback-card {
+    border-radius: var(--radius-md);
+    padding: var(--sp-3) var(--sp-4);
+    margin-bottom: var(--sp-4);
+    font-size: var(--fs-sm);
+    line-height: var(--lh-snug);
+}
+.feedback-card.ok { background: var(--success-bg); color: var(--success-text); border: 1px solid var(--success-border); }
+.feedback-card.no { background: var(--danger-bg); color: var(--danger-text); border: 1px solid var(--danger-border); }
+.feedback-card .ref { margin-top: var(--sp-2); font-size: var(--fs-xs); opacity: .9; display: inline-flex; align-items: center; gap: 5px; }
+.feedback-card .q-title { font-weight: 650; margin-bottom: 6px; }
+
+.verdict-card {
+    text-align: center;
+    border-radius: var(--radius-lg);
+    padding: var(--sp-6) var(--sp-4);
+    margin: var(--sp-4) 0;
+    border: 1px solid transparent;
+}
+.verdict-card.pass { background: var(--success-bg); color: var(--success-text); border-color: var(--success-border); }
+.verdict-card.fail { background: var(--danger-bg); color: var(--danger-text); border-color: var(--danger-border); }
+.verdict-card .big { font-size: var(--fs-3xl); font-weight: 800; display: flex; align-items: center; justify-content: center; gap: var(--sp-2); letter-spacing: -.02em; }
+.verdict-card .big svg { flex-shrink: 0; }
+.verdict-card .summary { font-size: var(--fs-sm); margin-top: var(--sp-2); line-height: var(--lh-snug); }
+
+/* 情景对话 */
+.chat-log { display: flex; flex-direction: column; gap: var(--sp-3); margin: var(--sp-3) 0; }
+
+.bubble {
+    max-width: 82%;
+    padding: 10px 13px;
+    border-radius: var(--radius-md);
+    font-size: var(--fs-sm);
+    line-height: var(--lh-base);
+    box-shadow: var(--shadow-sm);
+    animation: bubbleIn var(--dur-slow) var(--ease-out);
+}
+@keyframes bubbleIn {
+    from { opacity: 0; transform: translateY(6px) scale(.97); }
+    to   { opacity: 1; transform: none; }
+}
+.bubble.staff {
+    align-self: flex-end;
+    background: linear-gradient(140deg, var(--primary-dark), var(--primary));
+    color: var(--on-primary);
+    border-bottom-right-radius: 4px;
+}
+.bubble.customer {
+    align-self: flex-start;
+    background: var(--card-bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-bottom-left-radius: 4px;
+}
+/* 「顾客正在思考…」typing 气泡 */
+.typing-dots { display: inline-flex; gap: 4px; align-items: center; }
+.typing-dots i {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--text-light);
+    animation: typing 1.2s infinite ease-in-out;
+}
+.typing-dots i:nth-child(2) { animation-delay: .2s; }
+.typing-dots i:nth-child(3) { animation-delay: .4s; }
+@keyframes typing {
+    0%, 60%, 100% { transform: translateY(0); opacity: .4; }
+    30% { transform: translateY(-4px); opacity: 1; }
+}
+.chat-input-row { display: flex; gap: var(--sp-2); margin-top: var(--sp-2); }
+.chat-input-row .form-control { flex: 1; }
+.chat-input-row .btn { flex-shrink: 0; }
+
+/* 情景对话「即时点评」提示条：主色左描边 + 卡片底色 */
+.tip-inline {
+    align-self: flex-start;
+    max-width: 82%;
+    padding: 6px 12px;
+    margin-top: -4px;
+    font-size: var(--fs-xs);
+    line-height: var(--lh-snug);
+    color: var(--text-light);
+    background: var(--surface-2);
+    border-left: 3px solid var(--primary);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+/* flex-wrap: wrap 是窄屏防溢出的关键：`.scenario-tabs a { flex: 1 }` 的 flex 项默认
+   `min-width: auto`，无法收缩到 min-content 以下 —— 375px 下 3~4 个中文页签的
+   min-content 之和超过视口，实测溢出 98px（既有缺陷，2026-09-23 定位并修复）。
+   宽屏不受影响：flex-basis 为 0%，一行放得下就仍是一行。 */
+.scenario-tabs { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin: var(--sp-3) 0; }
+.scenario-tabs a {
+    flex: 1; text-align: center; padding: 9px 8px; font-size: var(--fs-xs);
+    font-weight: 600;
+    border-radius: var(--radius-full); text-decoration: none;
+    border: 1px solid var(--border); color: var(--text-light);
+    transition: color var(--dur-fast) ease, border-color var(--dur-fast) ease, background-color var(--dur-fast) ease;
+}
+.scenario-tabs a.active {
+    background: var(--primary);
+    color: var(--on-primary); border-color: var(--primary);
+}
+
+/* ═══════════ 16. 损耗预警（pulse 高亮） ═══════════ */
+@keyframes alertPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, .3); }
+    50% { box-shadow: 0 0 0 5px rgba(220, 38, 38, 0); }
+}
+.alert-pulse { animation: alertPulse 2.4s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .alert-pulse { animation: none; } }
+
+/* ═══════════ 17. AI 学习者模型 / 可解释性 / RAG 反馈 ═══════════ */
+/* 掌握度进度条：宽度由模板动态计算，属允许的内联动态值 */
+.mastery-bar {
+    height: 6px; margin: 6px 0; border-radius: var(--radius-full);
+    background: var(--neutral-bg); overflow: hidden;
+}
+.mastery-fill {
+    display: block; height: 100%; border-radius: var(--radius-full);
+    background: linear-gradient(90deg, var(--primary), var(--primary-light));
+    transition: width var(--dur-slow) var(--ease-out);
+}
+/* 能力雷达容器：固定高度避免图表初始化前页面跳动 */
+.chart-box { width: 100%; height: 260px; }
+
+/* 置信度条（可解释性） */
+.confidence-bar {
+    height: 6px; margin: 6px 0 10px; border-radius: var(--radius-full);
+    background: var(--neutral-bg); overflow: hidden;
+}
+.confidence-fill {
+    display: block; height: 100%; border-radius: var(--radius-full);
+    background: linear-gradient(90deg, var(--warning), var(--success));
+}
+.evidence-card {
+    padding: var(--sp-3) var(--sp-4); margin-bottom: var(--sp-3);
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+}
+.evidence-list { margin: 6px 0 0; padding-left: 18px; }
+.evidence-list li { font-size: var(--fs-xs); color: var(--text-light); line-height: 1.75; }
+
+/* RAG 知识出处与反馈按钮 */
+.ref-chip { display: inline-flex; align-items: center; gap: 6px; padding-right: 4px; }
+.ref-btn {
+    padding: 4px 11px; font-size: var(--fs-2xs); font-weight: 600; cursor: pointer;
+    min-height: 26px;   /* 触控目标下限（店员端反馈按钮） */
+    color: var(--primary); background: transparent;
+    border: 1px solid var(--border-strong); border-radius: var(--radius-full);
+    transition: background-color var(--dur-fast) ease, border-color var(--dur-fast) ease;
+}
+.ref-btn:hover:enabled { background: var(--hover-bg); border-color: var(--primary); }
+.ref-btn:disabled { color: var(--text-disabled); cursor: default; }
+.ref-chip-done { opacity: .65; }
+
+/* ═══════════ 18. AI 深度优化：判分标签 / 洞察卡 / 补训卡 ═══════════ */
+/* 判分要素标签（规则版判分详情可视化） */
+.kw-tags { display: flex; flex-wrap: wrap; gap: 6px; margin: var(--sp-2) 0; }
+.kw-chip {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 9px; border-radius: var(--radius-full);
+    font-size: var(--fs-xs); line-height: 1.6;
+    border: 1px solid var(--border);
+}
+.kw-chip-hit {
+    color: var(--success-text);
+    background: var(--success-bg);
+    border-color: var(--success-border);
+}
+.kw-chip-miss {
+    color: var(--text-light);
+    background: var(--neutral-bg);
+    border-color: var(--border);
+    opacity: .78;
+}
+.kw-chip-num {
+    color: var(--warning-text);
+    background: var(--warning-bg);
+    border-color: var(--warning-border);
+}
+/* AI 洞察卡（经营分析页：周期对比 / 预测 / 周末规律） */
+.ai-insights {
+    display: grid; gap: var(--sp-3);
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    margin: var(--sp-3) 0;
+}
+.insight-card {
+    padding: var(--sp-3) var(--sp-4);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--card-bg);
+}
+.insight-card h4 {
+    margin: 0 0 var(--sp-2); font-size: var(--fs-xs);
+    font-weight: 700;
+    color: var(--primary);
+    letter-spacing: .02em;
+}
+.trend-badge {
+    display: inline-block; margin: 2px 6px 2px 0;
+    padding: 3px 10px; border-radius: var(--radius-full);
+    font-size: var(--fs-xs); font-weight: 650;
+}
+.trend-badge.up { color: var(--success-text); background: var(--success-bg); }
+.trend-badge.down { color: var(--danger-text); background: var(--danger-bg); }
+.prediction { font-size: var(--fs-sm); color: var(--text); }
+/* 补训建议卡片（培训进度页） */
+.tip-card {
+    display: flex; gap: var(--sp-2); align-items: flex-start;
+    padding: var(--sp-3); margin-bottom: var(--sp-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--surface-2);
+}
+.tip-icon {
+    flex: none; width: 20px; height: 20px;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 50%;
+    font-size: var(--fs-2xs); font-weight: 700;
+    color: var(--on-primary);
+    background: linear-gradient(140deg, var(--primary), var(--primary-light));
+}
+.tip-text { font-size: var(--fs-sm); line-height: var(--lh-base); }
+
+/* 错误页大号图标 */
+.error-emoji {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 48px;
+    line-height: 1.2;
+    margin-bottom: var(--sp-2);
+}
+.error-emoji svg { color: var(--primary); width: 48px; height: 48px; }
+
+/* ═══════════ 19. 页面开场编排（stagger reveal，尊重减少动态偏好） ═══════════ */
+/* main.js 对 .main-content 直接子元素逐个加 .reveal 并设递增 delay；
+   backwards 填充保证 delay 期间元素不可见、播放结束后停留终态 */
+.reveal { animation: riseIn .5s var(--ease-out) backwards; }
+@keyframes riseIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .reveal { animation: none; }
+}
+
+/* ═══════════ 20. 图标系统对齐（_icons.html SVG 线性图标） ═══════════ */
+/* 统一基线：SVG 使用 currentColor 自动跟随主题；图标容器垂直居中对齐 */
+.home-card-icon, .mode-icon { align-items: center; justify-content: center; }
+
+/* 记录警示行 / AI 建议 / 参考答案 / 考核结论：内联小图标垂直对齐 */
+.record-note svg, .ref svg { vertical-align: -2px; }
+
+/* ═══════════ 21. 无障碍摘要 / 回到底部 ═══════════ */
+/* 读屏-only 图表摘要：视觉隐藏、保留给读屏软件（配合 AC-OBS-05/06 无障碍） */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* AI 情景对话「回到底部」浮动钮：长对话滚动后出现，点击回输入框 */
+.back-to-bottom {
+    position: fixed;
+    right: 18px;
+    bottom: 96px;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: var(--card-bg);
+    color: var(--primary);
+    font-size: var(--fs-lg);
+    box-shadow: var(--shadow-pop);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(8px);
+    transition: opacity var(--dur) ease, transform var(--dur) var(--ease-out), visibility var(--dur) ease;
+    z-index: 50;
+}
+.back-to-bottom.show { opacity: 1; visibility: visible; transform: translateY(0); }
+@media (prefers-reduced-motion: reduce) { .back-to-bottom { transition: none; } }
+
+/* ═══════════ 22. 移动端体验 + 骨架屏 + 按压反馈 + 滚动条 ═══════════ */
+/* ① 输入聚焦防缩放：iOS/微信内置浏览器聚焦自动放大（≥16px 根治） */
+@media (max-width: 639px) {
+    input, select, textarea { font-size: 16px !important; }
+}
+/* ② 抑制双击缩放与 300ms 点击延迟（触屏友好） */
+html, input, button, a, .card, .home-card, .mode-card, .record-item { touch-action: manipulation; }
+
+/* 骨架屏流光（AI 生成/加载占位；双主题自动适配通过 CSS 变量） */
+.skeleton {
+    border-radius: var(--radius-md);
+    background: linear-gradient(90deg, var(--card-bg) 25%, var(--hover-bg) 37%, var(--card-bg) 63%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s ease-in-out infinite;
+}
+.skeleton.skeleton-line { height: 14px; }
+.skeleton.skeleton-line + .skeleton-line { margin-top: var(--sp-2); }
+.skeleton.skeleton-narrow { width: 70%; }
+@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+@media (prefers-reduced-motion: reduce) { .skeleton { animation: none; } }
+
+/* ③ 按压微反馈：可点击卡片/按钮按下时轻微缩小（移动端手感），与 focus-visible 焦点环共存 */
+.home-card:active, .mode-card:active, .record-item:active, .btn:active, .back-to-bottom:active {
+    transform: scale(.97);
+}
+.mode-card:active, .home-card:active, .record-item:active { box-shadow: var(--shadow-sm); }
+
+/* AI 对话失败内联重试按钮（小药丸） */
+.btn-inline {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 6px;
+    padding: 5px 13px;
+    font-size: var(--fs-xs);
+    font-weight: 600;
+    border-radius: var(--radius-full);
+    border: 1px solid var(--primary);
+    color: var(--primary);
+    background: transparent;
+    cursor: pointer;
+    transition: background-color var(--dur-fast) ease;
+}
+.btn-inline:hover { background: var(--primary-soft); }
+
+/* PC 端滚动条美化 4px 圆角（管理端观感，微信内置浏览器不适用无碍） */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-light); }
+::-webkit-scrollbar-track { background: transparent; }
+
+/* ═══════════ 23. 产品管理完整化（工具条/toggle/内联编辑/批量底栏） ═══════════ */
+/* 隐藏元素统一兜底：.batch-bar/.btn 等显式 display 会覆盖 hidden 属性默认 none，必须 !important */
+[hidden] { display: none !important; }
+
+/* 复选框品牌色 */
+#productTable input[type="checkbox"] { accent-color: var(--primary); width: 16px; height: 16px; }
+
+/* 工具条：搜索 + 分类筛选胶囊 */
+.product-tools { display: flex; flex-direction: column; gap: var(--sp-2); margin-bottom: var(--sp-3); }
+@media (min-width: 1024px) {
+    body.is-admin .product-tools { flex-direction: row; align-items: center; }
+    body.is-admin .product-tools > .form-control { max-width: 240px; }
+}
+.pill-filter { display: flex; flex-wrap: wrap; gap: 6px; }
+.pill {
+    padding: 6px 14px; font-size: var(--fs-xs); font-weight: 600; border-radius: var(--radius-full);
+    border: 1px solid var(--border); color: var(--text-light);
+    background: var(--card-bg); cursor: pointer;
+    transition: color var(--dur-fast) ease, border-color var(--dur-fast) ease, background-color var(--dur-fast) ease;
+}
+.pill:hover { border-color: var(--primary); color: var(--primary); }
+.pill.active { background: var(--primary); border-color: var(--primary); color: var(--on-primary); }
+
+/* 行内编辑：行下就地展开表单 */
+.inline-edit-row td { background: var(--surface-2) !important; padding: var(--sp-3); }
+.inline-edit-fields { display: grid; grid-template-columns: 1fr; gap: var(--sp-2); }
+/* ≥641px（而非 640）：避免与下方 `max-width: 640`（产品表卡片化）在 640px 宽度同时命中 */
+@media (min-width: 640px) {
+    .inline-edit-fields { grid-template-columns: 2fr 1fr 1fr 1fr; }
+}
+.inline-edit-actions { display: flex; gap: var(--sp-2); margin-top: var(--sp-3); }
+/* 行内编辑展开体/触发按钮（防御性兜底，模板若使用即生效） */
+.inline-edit-form { display: block; }
+.inline-edit-trigger, .inline-edit-cancel { cursor: pointer; }
+
+/* 行内错误红条（暗色主题适配） */
+.form-error {
+    margin-top: var(--sp-2); padding: 7px 11px; font-size: var(--fs-xs);
+    border-radius: var(--radius-sm); background: var(--danger-bg);
+    color: var(--danger-text); border: 1px solid var(--danger-border);
+}
+
+/* 上下架开关（滑动圆钮，on 态主题主色） */
+.toggle-switch {
+    position: relative; width: 42px; height: 24px; padding: 0;
+    border: none; border-radius: var(--radius-full); cursor: pointer;
+    background: var(--neutral-bg); transition: background-color var(--dur) ease; vertical-align: middle;
+}
+.toggle-switch .toggle-knob {
+    position: absolute; top: 3px; left: 3px; width: 18px; height: 18px;
+    border-radius: 50%; background: var(--card-bg); box-shadow: var(--shadow-sm);
+    transition: transform var(--dur) var(--ease-spring), width var(--dur) var(--ease-spring);
+}
+.toggle-switch.on { background: var(--primary); }
+.toggle-switch.on .toggle-knob { transform: translateX(18px); }
+.toggle-switch:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.toggle-switch:active .toggle-knob { width: 21px; }
+@media (prefers-reduced-motion: reduce) {
+    .toggle-switch, .toggle-switch .toggle-knob { transition: none; }
+}
+
+/* 图标按钮（编辑/删除） */
+.icon-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 32px; height: 32px; padding: 0; border: 1px solid transparent;
+    border-radius: var(--radius-sm); background: transparent; color: var(--text-light);
+    cursor: pointer;
+    transition: color var(--dur-fast) ease, border-color var(--dur-fast) ease, background-color var(--dur-fast) ease;
+}
+.icon-btn:hover { color: var(--primary); border-color: var(--primary); background: var(--primary-soft); }
+.icon-btn.inline-delete:hover { color: var(--danger); border-color: var(--danger); background: var(--danger-bg); }
+.row-actions { display: flex; gap: 6px; white-space: nowrap; }
+#productTable .col-check { width: 44px; }
+#productTable .col-actions { width: 96px; }
+
+/* 批量操作固定底栏（安全区适配） */
+.batch-bar {
+    position: fixed; left: 0; right: 0;
+    bottom: calc(10px + constant(safe-area-inset-bottom));
+    bottom: calc(10px + env(safe-area-inset-bottom));
+    z-index: 60; margin: 0 auto; max-width: 960px; padding: 10px 12px;
+    display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap;
+    background: var(--card-bg); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); box-shadow: var(--shadow-pop);
+}
+.batch-count { font-size: var(--fs-sm); color: var(--text-light); }
+.batch-count b { color: var(--primary); }
+.batch-actions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.batch-price { display: flex; gap: 6px; align-items: center; }
+/* 批量底栏显示时隐藏右下角主题悬浮按钮，防窄屏重叠（类由 product_list syncBatch 切换） */
+body.has-batch-bar .theme-fab { display: none; }
+.batch-price .form-control { width: 150px; min-width: 0; margin: 0; }
+
+/* ≤640px 产品表卡片化（data-label 显示列名，手机微信可读可点） */
+@media (max-width: 639px) {
+    #productTable thead { display: none; }
+    #productTable, #productTable tbody { display: block; width: 100%; }
+    #productTable tbody { display: flex; flex-direction: column; gap: var(--sp-2); }
+    #productTable tr[data-id], #productTable tr.inline-edit-row { display: block; }
+    #productTable tr[data-id]:not(.inline-edit-row) {
+        border: 1px solid var(--border); border-radius: var(--radius-md);
+        padding: 6px 10px; background: var(--card-bg);
+    }
+    #productTable tr[data-id]:not(.inline-edit-row).inactive { opacity: .6; }
+    #productTable td {
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 7px 2px; border-bottom: 1px dashed var(--border); text-align: right;
+    }
+    #productTable td:last-child { border-bottom: none; }
+    #productTable td::before {
+        content: attr(data-label); color: var(--text-light); font-size: var(--fs-xs); margin-right: 12px;
+    }
+    #productTable td.col-check { justify-content: flex-start; }
+    #productTable td.col-check::before { content: none; }
+    #productTable td.row-actions { justify-content: flex-end; }
+    #productTable td.row-actions::before { content: attr(data-label); margin-right: auto; }
+    #productTable .inline-edit-row td { display: block; text-align: left; }
+    #productTable .inline-edit-row td::before { content: none; }
+    #productTable td[colspan="7"] { border: 1px solid var(--border); border-radius: var(--radius-md); }
+}
+
+/* ═══════════ 24. 店员端底部 Tab 导航 + 空状态情感化图标 ═══════════ */
+.bottom-tabs {
+    position: fixed; left: 0; right: 0; bottom: 0;
+    z-index: 100; display: flex;
+    background: var(--card-bg);
+    border-top: 1px solid var(--border);
+    padding-bottom: constant(safe-area-inset-bottom);
+    padding-bottom: env(safe-area-inset-bottom);
+    -webkit-backdrop-filter: saturate(150%) blur(12px);
+    backdrop-filter: saturate(150%) blur(12px);
+}
+.tab-item {
+    position: relative;
+    flex: 1; display: flex; flex-direction: column; align-items: center;
+    gap: 3px; padding: 10px 0 8px; text-decoration: none;
+    color: var(--text-light); font-size: var(--fs-2xs);
+    min-height: 56px;
+    transition: color var(--dur-fast) ease;
+}
+/* 顶部激活指示条（比整块换色更克制） */
+.tab-item.active::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 50%;
+    transform: translateX(-50%);
+    width: 26px; height: 3px;
+    border-radius: 0 0 3px 3px;
+    background: var(--primary);
+}
+.tab-item .tab-icon { line-height: 1; display: inline-flex; }
+.tab-item.active { color: var(--primary); font-weight: 650; }
+.tab-item:active { transform: scale(.94); }
+/* 防固定底栏遮挡页面底部内容 */
+body.h5-page .main-content { padding-bottom: 84px; }
+@media (prefers-reduced-motion: reduce) { .tab-item { transition: none; } }
+
+/* 空状态情感化图标（复用 _icons 宏，低透明度品牌色） */
+.empty-state .empty-icon { display: block; margin-bottom: var(--sp-2); }
+.empty-state .empty-icon svg { color: var(--text-light); opacity: .5; }
+
+/* ═══════════ 25. 顾客情绪状态徽章（情景对话情绪状态机） ═══════════ */
+.mood-bar {
+    display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-2);
+    padding: 9px 13px; margin: var(--sp-3) 0 0;
+    background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius-md);
+    font-size: var(--fs-xs); color: var(--text-light);
+}
+.mood-bar[hidden] { display: none; }
+.mood-badge {
+    display: inline-flex; align-items: center; padding: 2px 10px;
+    border-radius: var(--radius-full); font-weight: 650; font-size: var(--fs-xs);
+    background: var(--warning-bg); color: var(--warning-text);
+    border: 1px solid var(--warning-border);
+}
+.mood-badge[data-mood="satisfied"] { background: var(--success-bg); color: var(--success-text); border-color: var(--success-border); }
+.mood-badge[data-mood="pleased"]   { background: var(--success-bg); color: var(--success-text); border-color: var(--success-border); }
+.mood-badge[data-mood="annoyed"]   { background: var(--warning-bg); color: var(--warning-text); border-color: var(--warning-border); }
+.mood-badge[data-mood="angry"]     { background: var(--danger-bg);  color: var(--danger-text);  border-color: var(--danger-border); }
+.mood-track {
+    flex: 1 1 88px; min-width: 76px; height: 6px; border-radius: var(--radius-full);
+    background: var(--neutral-bg); overflow: hidden;
+}
+.mood-fill { display: block; height: 100%; border-radius: var(--radius-full); background: var(--primary); transition: width var(--dur-slow) var(--ease-out); }
+.mood-fill[data-level="low"]  { background: var(--danger); }
+.mood-fill[data-level="mid"]  { background: var(--warning); }
+.mood-patience { margin-left: auto; white-space: nowrap; }
+@media (prefers-reduced-motion: reduce) { .mood-fill { transition: none; } }
+
+/* ═══════════ 26. 动态谈判面板与复盘卡（P5） ═══════════ */
+/* 谈判面板：心理价区间 / 当前谈价 / 让步进度。隐藏底线只以区间提示呈现。 */
+.nego-panel {
+    padding: var(--sp-3) var(--sp-4); margin: var(--sp-3) 0 0;
+    background: var(--card-bg); border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    font-size: var(--fs-xs); color: var(--text-light);
+}
+.nego-panel[hidden] { display: none; }
+.nego-row { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-2); }
+.nego-chip {
+    display: inline-flex; align-items: center; gap: 3px; padding: 2px 10px;
+    border-radius: var(--radius-full);
+    background: var(--neutral-bg); color: var(--neutral-text); white-space: nowrap;
+}
+.nego-chip b { color: var(--text); font-variant-numeric: tabular-nums; }
+.nego-status { flex: 1 1 100%; margin-top: 2px; line-height: var(--lh-snug); }
+.nego-status[data-result="deal"] { color: var(--success-text); font-weight: 650; }
+.nego-status[data-result="lost"] { color: var(--danger-text); font-weight: 650; }
+.nego-progress { display: flex; align-items: center; gap: var(--sp-2); margin-top: var(--sp-2); }
+.nego-progress-label { white-space: nowrap; }
+.nego-track {
+    flex: 1 1 88px; min-width: 76px; height: 6px;
+    border-radius: var(--radius-full); background: var(--neutral-bg); overflow: hidden;
+}
+.nego-fill {
+    display: block; height: 100%; border-radius: var(--radius-full);
+    background: var(--warning); transition: width var(--dur-slow) var(--ease-out);
+}
+.nego-fill[data-level="high"] { background: var(--primary); }
+.nego-pct { margin-left: auto; white-space: nowrap; }
+.nego-pct b { color: var(--text); font-variant-numeric: tabular-nums; }
+
+/* 谈判复盘卡：成交/流失结论 + 让利幅度 + 四维评分条 + 改进建议 */
+.review-card {
+    padding: var(--sp-4); margin-bottom: var(--sp-4);
+    border-radius: var(--radius-md); border: 1px solid transparent;
+    font-size: var(--fs-sm); line-height: var(--lh-snug);
+}
+.review-card.ok { background: var(--success-bg); color: var(--success-text); border-color: var(--success-border); }
+.review-card.no { background: var(--danger-bg); color: var(--danger-text); border-color: var(--danger-border); }
+
+/* ═══════════ 27. AI 决策轨迹时间线（P6） ═══════════ */
+/* 竖向时间线：步骤圆点 + 工具名 + 证据摘要 + 耗时 + 来源徽章；默认折叠为一行摘要。
+   规则版与大模型版共用同一结构，保证离线演示也能看到完整推理链路。 */
+.agent-trace { margin: var(--sp-3) 0 0; border-top: 1px solid var(--border); }
+.trace-summary {
+    display: flex; align-items: center; gap: var(--sp-2);
+    padding: var(--sp-3) 0; cursor: pointer; list-style: none;
+    font-size: var(--fs-xs); color: var(--text-light);
+    transition: color var(--dur-fast) ease;
+}
+.trace-summary::-webkit-details-marker { display: none; }
+.trace-summary:hover { color: var(--text); }
+/* 折叠指示三角（原生 details 无 JS，展开状态由 [open] 驱动） */
+.trace-summary::before {
+    content: '▸'; font-size: var(--fs-2xs); color: var(--text-light);
+    transition: transform var(--dur-fast) var(--ease-out);
+}
+.agent-trace[open] > .trace-summary::before { transform: rotate(90deg); }
+.trace-title { font-weight: 600; color: var(--text); }
+.trace-meta { margin-left: auto; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.trace-steps {
+    list-style: none; margin: 0 0 var(--sp-3); padding: var(--sp-2) 0 0 var(--sp-4);
+    border-left: 1px solid var(--border-strong);
+}
+.trace-step { position: relative; padding: 0 0 var(--sp-3) var(--sp-4); }
+.trace-step::before {
+    content: ''; position: absolute; left: calc(-1 * var(--sp-4) - 4px); top: 6px;
+    width: 8px; height: 8px; border-radius: var(--radius-full);
+    background: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft);
+}
+.trace-step.is-fail::before { background: var(--danger); box-shadow: 0 0 0 3px var(--danger-bg); }
+.trace-step-head { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+.trace-step-name {
+    font-size: var(--fs-xs); font-weight: 650; color: var(--text);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.trace-ms {
+    margin-left: auto; font-size: var(--fs-2xs);
+    color: var(--text-light); font-variant-numeric: tabular-nums;
+}
+.trace-io { display: flex; gap: 6px; margin-top: 2px; font-size: var(--fs-2xs); line-height: var(--lh-snug); }
+.trace-io-k { flex: 0 0 auto; color: var(--text-disabled); }
+.trace-io-v { color: var(--text-light); word-break: break-all; }
+@media (prefers-reduced-motion: reduce) {
+    .trace-summary::before { transition: none; }
+}
+.review-head {
+    display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap; gap: var(--sp-2); margin-bottom: var(--sp-2);
+}
+.review-verdict { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-md); font-weight: 700; }
+.review-total b { font-size: var(--fs-lg); font-variant-numeric: tabular-nums; }
+.review-reason { margin-bottom: var(--sp-3); opacity: .92; }
+.review-scores { display: flex; flex-direction: column; gap: var(--sp-1); }
+.review-score-row { display: flex; align-items: center; gap: var(--sp-2); }
+.review-score-label { flex: 0 0 64px; white-space: nowrap; }
+.review-score-row .mastery-bar { flex: 1; margin: 0; }
+.review-score-num { flex: 0 0 28px; text-align: right; font-variant-numeric: tabular-nums; font-weight: 650; }
+.review-advice { margin: var(--sp-3) 0 0; padding-left: var(--sp-5); }
+.review-advice li { margin-bottom: 4px; }
+@media (prefers-reduced-motion: reduce) { .nego-fill { transition: none; } }
+
+/* ═══════════ 27. 工具类 ═══════════ */
+.text-center { text-align: center; }
+.mt-4 { margin-top: 4px; } .mt-6 { margin-top: 6px; }
+.mt-8 { margin-top: var(--sp-2); } .mt-16 { margin-top: var(--sp-4); }
+.text-muted { color: var(--text-light); }
+/* 培训助手页提示小字 */
+.trainer-hint { font-size: var(--fs-xs); margin-top: 6px; color: var(--text-light); }
+/* 演示路径引导条（快照总览页） */
+.demo-guide {
+    margin: 0 0 var(--sp-4);
+    padding: 9px 13px;
+    font-size: var(--fs-xs);
+    line-height: var(--lh-snug);
+    color: var(--primary);
+    background: var(--primary-soft);
+    border: 1px solid var(--primary-soft-strong);
+    border-radius: var(--radius-md);
+}
+/* 弹性占比（配合 .form-row 容器使用） */
+.flex-1 { flex: 1; } .flex-2 { flex: 2; }
+
+/* 带工具按钮的页头：标题左对齐，操作按钮右侧成组、窄屏自动换行 */
+.page-header.has-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--sp-2);
+    align-items: center;
+}
+.page-header.has-actions h2 { margin-right: auto; }
+
+/* ECharts 图表容器（页面可在 .chart-box 基础上覆写高度） */
+.chart-box { width: 100%; height: 300px; }
+
+/* ═══════════ 27. 高对比偏好 / 极窄屏兜底 ═══════════ */
+@media (prefers-contrast: more) {
+    :root {
+        --border: #9FB0AC;
+        --border-strong: #7C8F8B;
+    }
+    .home-card, .mode-card, .menu-card, .record-list, .stat-cards { border-width: 2px; }
+}
+
+@media (max-width: 639px) {
+    .stat-cards { grid-template-columns: repeat(2, 1fr); }
+    .admin-menu { grid-template-columns: repeat(2, 1fr); }
+    .landing { padding-left: var(--sp-3); padding-right: var(--sp-3); }
+    .home-hero h1 { font-size: var(--fs-2xl); }
+    .page-header.has-actions { flex-direction: column; align-items: stretch; }
+}
+
+/* ═══════════ 28. 长列表折叠（V4 信息密度治理） ═══════════ */
+/* 服务端渲染 .is-collapsed（>5 条时）+ base.html 内联脚本增强；
+   无 JS 场景由 base.html 的 <noscript> 兜底全量展开并隐藏按钮 */
+.record-list.is-collapsed .record-item:nth-child(n+6) { display: none; }
+/* 折叠态下让第 5 条承担「末行」圆角与去分割线；展开态该规则自动失效 */
+.record-list.is-collapsed .record-item:nth-child(5) {
+    border-bottom: none;
+    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+}
+.list-toggle { margin-top: var(--sp-2); }
+
+/* 窄屏图表降高：单屏可同见「图 + 后续内容」，减少滚动 */
+@media (max-width: 639px) {
+    .chart-box { height: 260px; }
+}
+
+/* ═══════════ 29. 行业包配置后台（P4） ═══════════ */
+/* 编辑器两栏：≥768px 左侧分区锚点 + 右侧分区表单；窄屏锚点降为顶部横滑 */
+.pack-editor { display: block; }
+
+.pack-anchors {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--sp-2);
+    margin-bottom: var(--sp-5);
+    padding-bottom: var(--sp-3);
+    border-bottom: 1px solid var(--border);
+}
+
+.pack-anchors a {
+    padding: var(--sp-2) var(--sp-3);
+    border-radius: var(--radius-sm);
+    background: var(--surface-2);
+    color: var(--text-light);
+    font-size: var(--fs-sm);
+    text-decoration: none;
+    transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+
+.pack-anchors a:hover { background: var(--hover-bg); color: var(--text); }
+
+.pack-sections > .section { margin-bottom: var(--sp-8); }
+
+/* 分区内的可重复行（知识域 / 题库 / 情景 / 产品 / 指标） */
+.pack-row {
+    padding: var(--sp-3) 0;
+    border-bottom: 1px solid var(--border);
+}
+
+.pack-row:last-child { border-bottom: none; }
+
+.pack-row.is-removed { opacity: .5; }
+
+.pack-metric-row {
+    padding: var(--sp-4);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    margin-bottom: var(--sp-3);
+}
+
+/* 每区底部操作条：保存 + 恢复内置默认 */
+.pack-save-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--sp-3);
+    align-items: center;
+    margin-top: var(--sp-4);
+    padding-top: var(--sp-4);
+    border-top: 1px solid var(--border);
+}
+
+/* 知识条目 md 编辑器：等宽字体便于对齐 markdown 结构 */
+.pack-md {
+    font-family: var(--font-mono, ui-monospace, monospace);
+    font-size: var(--fs-sm);
+    line-height: var(--lh-snug);
+    min-height: 140px;
+}
+
+@media (min-width: 1024px) {
+    .pack-editor {
+        display: grid;
+        grid-template-columns: 168px 1fr;
+        gap: var(--sp-6);
+        align-items: start;
+    }
+    .pack-anchors {
+        flex-direction: column;
+        flex-wrap: nowrap;
+        position: -webkit-sticky;
+        position: sticky;
+        top: var(--sp-6);
+        border-bottom: none;
+        border-right: 1px solid var(--border);
+        padding-bottom: 0;
+        margin-bottom: 0;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .pack-anchors a { transition: none; }
+}
+
+/* ═══════════ 责任任务闭环（PH4-2） ═══════════ */
+.task-form .form-group { margin-bottom: var(--sp-3); }
+.task-filter {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--sp-2);
+    margin-bottom: var(--sp-4);
+}
+.task-filter .btn.active {
+    background: var(--primary-soft-strong);
+    border-color: var(--primary);
+    color: var(--primary);
+}
+.task-row { align-items: center; }
+.task-title { display: block; margin-bottom: var(--sp-1); }
+.task-actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--sp-2);
+}
+.task-actions .inline-form { margin-bottom: 0; }
+.task-overdue { border-left: 3px solid var(--danger); }
+.task-create-form {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--sp-2);
+    margin-top: var(--sp-2);
+}
+.task-create-form .form-control { max-width: 220px; }
+.task-evidence {
+    margin-top: var(--sp-2);
+    padding: var(--sp-3);
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: var(--fs-xs);
+}
+
+@media (max-width: 639px) {
+    .task-row {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+    .task-actions { width: 100%; }
+}
+
+/* ═══════════ AI 决策驾驶舱（PH5） ═══════════ */
+.decision-cockpit {
+    margin: var(--sp-4) 0 var(--sp-6);
+    padding: var(--sp-5) 0;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+}
+.decision-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--sp-3);
+    margin-bottom: var(--sp-4);
+}
+.decision-head h3 {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    margin: 0;
+}
+.decision-note,
+.decision-role-summary,
+.decision-item p,
+.decision-confirm p {
+    color: var(--text-light);
+    line-height: var(--lh-snug);
+}
+.decision-note { margin: var(--sp-1) 0 0; font-size: var(--fs-sm); }
+.decision-status-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--sp-2) var(--sp-4);
+    align-items: center;
+    color: var(--text-light);
+    font-size: var(--fs-xs);
+}
+.decision-summary {
+    margin: var(--sp-3) 0 var(--sp-4);
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+.decision-role-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--sp-3);
+}
+.decision-role {
+    min-width: 0;
+    padding: var(--sp-4);
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+}
+.decision-role--advisor { border-left: 3px solid var(--primary); }
+.decision-role--auditor { border-left: 3px solid var(--warning); }
+.decision-role--moderator { border-left: 3px solid var(--success); }
+.decision-role-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-2);
+    margin-bottom: var(--sp-2);
+}
+.decision-role-summary {
+    margin: 0 0 var(--sp-3);
+    font-size: var(--fs-sm);
+}
+.decision-source {
+    flex: none;
+    padding: 2px var(--sp-2);
+    border-radius: var(--radius-full);
+    background: var(--neutral-bg);
+    color: var(--text-light);
+    font-size: var(--fs-2xs);
+}
+.decision-source--deepseek,
+.decision-source--dify,
+.decision-source--ai {
+    background: var(--success-bg);
+    color: var(--success-text);
+}
+.decision-source--error {
+    background: var(--danger-bg);
+    color: var(--danger-text);
+}
+.decision-item {
+    padding: var(--sp-3) 0;
+    border-top: 1px solid var(--border);
+    overflow-wrap: anywhere;
+}
+.decision-item:first-of-type { border-top: none; }
+.decision-item strong { display: block; margin-bottom: var(--sp-1); }
+.decision-item p { margin: 0; font-size: var(--fs-sm); }
+.decision-item--danger {
+    padding-left: var(--sp-3);
+    border-left: 3px solid var(--danger);
+}
+.decision-evidence-id {
+    display: inline-block;
+    margin-top: var(--sp-2);
+    color: var(--text-light);
+    font-family: var(--font-mono, ui-monospace, monospace);
+    font-size: var(--fs-2xs);
+    overflow-wrap: anywhere;
+}
+.decision-disagreement {
+    margin-top: var(--sp-4);
+    padding: var(--sp-4);
+    background: var(--danger-bg);
+    border: 1px solid var(--danger-border);
+    border-radius: var(--radius-sm);
+}
+.decision-disagreement h4,
+.decision-confirm h4 {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    margin-top: 0;
+}
+.decision-evidence {
+    margin-top: var(--sp-4);
+    padding: var(--sp-3) 0;
+    border-top: 1px solid var(--border);
+}
+.decision-evidence summary { cursor: pointer; font-weight: 600; }
+.decision-evidence-list {
+    display: grid;
+    gap: var(--sp-2);
+    margin-top: var(--sp-3);
+    color: var(--text-light);
+    font-size: var(--fs-xs);
+    overflow-wrap: anywhere;
+}
+.decision-confirm {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(320px, 1.4fr);
+    gap: var(--sp-5);
+    margin-top: var(--sp-4);
+    padding-top: var(--sp-4);
+    border-top: 1px solid var(--border);
+}
+.decision-confirm h4 { margin-bottom: var(--sp-2); }
+.decision-confirm p { margin: 0; font-size: var(--fs-sm); }
+.decision-task-form {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--sp-3);
+}
+.decision-task-form label {
+    display: grid;
+    gap: var(--sp-1);
+    min-width: 0;
+    color: var(--text-light);
+    font-size: var(--fs-xs);
+}
+.decision-task-wide { grid-column: 1 / -1; }
+.decision-task-form input,
+.decision-task-form select,
+.decision-task-form textarea {
+    width: 100%;
+    min-width: 0;
+}
+.decision-task-form button { justify-self: start; }
+.decision-error {
+    margin-bottom: var(--sp-3);
+    padding: var(--sp-3);
+    background: var(--danger-bg);
+    color: var(--danger-text);
+    border: 1px solid var(--danger-border);
+    border-radius: var(--radius-sm);
+}
+
+@media (max-width: 639px) {
+    .decision-role-grid,
+    .decision-confirm,
+    .decision-task-form {
+        grid-template-columns: 1fr;
+    }
+    .decision-head { align-items: center; }
+}
+
+@media (max-width: 639px) {
+    .decision-cockpit { padding: var(--sp-4) 0; }
+    .decision-head { align-items: flex-start; flex-direction: column; }
+    .decision-role { padding: var(--sp-3); }
+    .decision-status-bar { display: grid; }
+    .decision-task-form button { width: 100%; }
+}
+
+@media (max-width: 1023px) {
+    .top-nav {
+        flex-wrap: wrap;
+        gap: var(--sp-2);
+        padding: var(--sp-3);
+        padding-top: calc(var(--sp-3) + constant(safe-area-inset-top));
+        padding-top: calc(var(--sp-3) + env(safe-area-inset-top));
+    }
+    .nav-user {
+        order: 2;
+        margin-left: auto;
+        gap: var(--sp-2);
+    }
+    .nav-user > span { display: none; }
+    .pack-switcher {
+        order: 3;
+        flex: 1 1 100%;
+        flex-wrap: wrap;
+        margin: 0;
+    }
+    .pack-switcher label { flex: none; }
+    .pack-switcher select {
+        flex: 1 1 120px;
+        min-width: 0;
+        max-width: none;
+    }
+}
+
+/* ═══════════ 25. 兼容兜底：不支持 flex gap 的内核 ═══════════
+   背景：Chrome < 84 / iOS Safari < 14.5 / 旧版微信 X5 内核会**整体忽略容器上的 gap**，
+        导致并排元素间距塌成 0。实测本项目有 65 个 flex 容器依赖 gap。
+   做法：`@supports not (gap: 1px)` 精确探测 —— 支持 gap 的浏览器整块跳过，
+        故现代浏览器零视觉变化、本块零副作用。
+   范围：只兜底「布局关键容器」；纯装饰容器不兜底（最坏是间距略紧，不破版）。
+   方向：row 用 margin-left，column 用 margin-top。
+
+   ⚠️ 三条约束，全部由对照组实测踩出来，改本块前务必读：
+   1. **不得覆盖子元素自带的间距**：`> * + *:not([class^="ml-"]):not([class*=" ml-"])`
+      这类守卫排除工具类 margin（`.mt-8` / `.ml-2` …）。否则实测 `.staff-card`
+      子级 `.mt-8` 的 8px 被兜底的 3px 顶掉（基线 11px → 兜底 3px）。
+      只保护**后一个**元素即可：间距 = 前元素 margin-right + gap + 后元素 margin-left，
+      前元素的 margin 在基线与兜底两侧都存在，不产生偏差。
+      用两级 `:not()` 而非 `:is()` / `:where()`：后两者在**需要兜底的老内核里不支持**，
+      会让整条选择器失效、兜底静默不生效（`[class^=]` 是 CSS3，全兼容）。
+   2. **跳过 justify-content: space-between 的容器**：它们本来就靠剩余空间撑开、
+      不存在塌陷；而子级常带 `margin-left: auto`（如 `.pack-switcher`），
+      兜底的 margin 会把 auto 顶掉、反而破坏右对齐。`.top-nav` 因此已从清单移除。
+   3. **方向随断点切换的容器**（`.product-tools`：基础 column、≥768 变 row）
+      必须在块内用媒体查询翻方向，否则桌面端被写成 margin-top，等于没兜底。 */
+
+   /* ═══════════ 26. 进度条宽度变量化 + 站点页脚（2026-09-23 P2 收口） ═══════════
+    背景：5 个模板曾用内联 `style="width: X%"` 承载动态进度（掌握度 / 答题进度 /
+         情绪值 / 谈判进度 / 置信度）。内联样式无法被主题与断点复用，观感上也像散落的
+         魔法数字。
+    做法：模板只声明 CSS 变量 `--pct`，宽度由本块统一计算；变量变化**仍触发 width 过渡**
+         （实测 10%→90% 逐帧采样 102 / 150 / 262 px，动效零回归）。
+    边界：JS 动态更新的两条进度（mood / nego）改走 setProperty('--pct')，不再直写 width，
+         避免两套宽度来源并存。 */
+   .mastery-fill,
+   .q-bar-fill,
+   .mood-fill,
+   .nego-fill,
+   .confidence-fill {
+     width: var(--pct, 0%);
+   }
+
+   /* 站点页脚（语义 <footer> 落地样式）：品牌收束 + 演示数据声明，位于内容之后、不占首屏。 */
+   .site-footer {
+     margin: var(--sp-8) 0 0;
+     padding: var(--sp-5) var(--sp-4) var(--sp-6);
+     border-top: 1px solid var(--border);
+     color: var(--text-light);
+     font-size: var(--fs-xs);
+     line-height: var(--lh-base);
+     text-align: center;
+   }
+
+   .site-footer p {
+     margin: 0;
+   }
+
+   @supports not (gap: 1px) {
+    /* ── 横向容器（row） ── */
+    .nego-chip > * + *:not([class^="ml-"]):not([class*=" ml-"]) { margin-left: 3px; }
+
+    .btn-inline > * + *:not([class^="ml-"]):not([class*=" ml-"]),
+    .kw-chip > * + *:not([class^="ml-"]):not([class*=" ml-"]),
+    .typing-dots > * + *:not([class^="ml-"]):not([class*=" ml-"]) { margin-left: 4px; }
+
+    .ai-title > * + *:not([class^="ml-"]):not([class*=" ml-"]),
+    .feedback-card .ref > * + *:not([class^="ml-"]):not([class*=" ml-"]) { margin-left: 5px; }
+
+    .batch-actions > * + *:not([class^="ml-"]):not([class*=" ml-"]),
+    .batch-price > * + *:not([class^="ml-"]):not([class*=" ml-"]),
+    .btn > * + *:not([class^="ml-"]):not([class*=" ml-"]),
+    .form-section-title > * + *:not([class^="ml-"]):not([class*=" ml-"]),
+    .kw-tags > * + *:not([class^="ml-"]):not([class*=" ml-"]),
+    .pill-filter > * + *:not([class^="ml-"]):not([class*=" ml-"]),
+    .ref-chip > * + *:not([class^="ml-"]):not([class*=" ml-"]),
+    .review-verdict > * + *:not([class^="ml-"]):not([class*=" ml-"]),
+    .row-actions > * + *:not([class^="ml-"]):not([class*=" ml-"]),
+    .seg-bar > * + *:not([class^="ml-"]):not([class*=" ml-"]),
+    .trace-io > * + *:not([class^="ml-"]):not([class*=" ml-"]),
+    .trace-step-head > * + *:not([class^="ml-"]):not([class*=" ml-"]) { margin-left: 6px; }
+
+    .ai-box h4 > * + *:not([class^="ml-"]):not([class*=" ml-"]),
+    .batch-bar > * + *:not([class^="ml-"]):not([class*=" ml-"]),
+    .chat-input-row > * + *:not([class^="ml-"]):not([class*=" ml-"]),
+    .decision-disagreement h4 > * + *:not([class^="ml-"]):not([class*=" ml-"]),
+    .decision-confirm h4 > * + *:not([class^="ml-"]):not([class*=" ml-"]),
+    .decision-head h3 > * + *:not([class^="ml-"]):not([class*=" ml-"]),
+    .decision-role-head > * + *:not([class^="ml-"]):not([class*=" ml-"]),
+    .flash > * + *:not([class^="ml-"]):not([class*=" ml-"]),
+    .form-row > * + *:not([class^="ml-"]):not([class*=" ml-"]),
+    .home-features > * + *:not([class^="ml-"]):not([class*=" ml-"]),
+    .inline-edit-actions > * + *:not([class^="ml-"]):not([class*=" ml-"]),
+    .mood-bar > * + *:not([class^="ml-"]):not([class*=" ml-"]),
+    .nav-brand > * + *:not([class^="ml-"]):not([class*=" ml-"]),
+    .nego-progress > * + *:not([class^="ml-"]):not([class*=" ml-"]),
+    .nego-row > * + *:not([class^="ml-"]):not([class*=" ml-"]),
+    .pack-switcher > * + *:not([class^="ml-"]):not([class*=" ml-"]),
+    .page-header.has-actions > * + *:not([class^="ml-"]):not([class*=" ml-"]),
+    .quick-questions > * + *:not([class^="ml-"]):not([class*=" ml-"]),
+    .record-header > * + *:not([class^="ml-"]):not([class*=" ml-"]),
+    .review-head > * + *:not([class^="ml-"]):not([class*=" ml-"]),
+    .review-score-row > * + *:not([class^="ml-"]):not([class*=" ml-"]),
+    .role-opt > * + *:not([class^="ml-"]):not([class*=" ml-"]),
+    .scenario-tabs > * + *:not([class^="ml-"]):not([class*=" ml-"]),
+    .section h3 > * + *:not([class^="ml-"]):not([class*=" ml-"]),
+    .task-actions > * + *:not([class^="ml-"]):not([class*=" ml-"]),
+    .task-create-form > * + *:not([class^="ml-"]):not([class*=" ml-"]),
+    .task-filter > * + *:not([class^="ml-"]):not([class*=" ml-"]),
+    .tip-card > * + *:not([class^="ml-"]):not([class*=" ml-"]),
+    .trace-summary > * + *:not([class^="ml-"]):not([class*=" ml-"]),
+    .verdict-card .big > * + *:not([class^="ml-"]):not([class*=" ml-"]) { margin-left: var(--sp-2); }
+
+    .pack-save-bar > * + *:not([class^="ml-"]):not([class*=" ml-"]),
+    .pagination > * + *:not([class^="ml-"]):not([class*=" ml-"]) { margin-left: var(--sp-3); }
+
+    /* .nav-user：基础档 gap 为 sp-3，≤820 被媒体查询覆盖为 sp-2 ——
+       兜底必须逐档对齐，否则桌面端比真实 gap 少 4px（对照组实测）。 */
+    .nav-user > * + *:not([class^="ml-"]):not([class*=" ml-"]) { margin-left: var(--sp-3); }
+    @media (max-width: 1023px) {
+        .nav-user > * + *:not([class^="ml-"]):not([class*=" ml-"]) { margin-left: var(--sp-2); }
+    }
+
+    /* 双向 gap（row sp-2 / column sp-4）：row 容器 → 列间距取 sp-4 */
+    .decision-status-bar > * + *:not([class^="ml-"]):not([class*=" ml-"]) { margin-left: var(--sp-4); }
+
+    .home-card > * + *:not([class^="ml-"]):not([class*=" ml-"]),
+    .mode-card > * + *:not([class^="ml-"]):not([class*=" ml-"]) { margin-left: var(--sp-4); }
+
+    /* ── 纵向容器（column） ── */
+    .staff-card > * + *:not([class^="mt-"]):not([class*=" mt-"]),
+    .tab-item > * + *:not([class^="mt-"]):not([class*=" mt-"]) { margin-top: 3px; }
+
+    .review-scores > * + *:not([class^="mt-"]):not([class*=" mt-"]) { margin-top: var(--sp-1); }
+
+    .pack-anchors > * + *:not([class^="mt-"]):not([class*=" mt-"]),
+    .product-tools > * + *:not([class^="mt-"]):not([class*=" mt-"]),
+    #productTable tbody > * + *:not([class^="mt-"]):not([class*=" mt-"]) { margin-top: var(--sp-2); }
+
+    .chat-log > * + *:not([class^="mt-"]):not([class*=" mt-"]),
+    .decision-head > * + *:not([class^="mt-"]):not([class*=" mt-"]),
+    .home-actions > * + *:not([class^="mt-"]):not([class*=" mt-"]),
+    .nav-links > * + *:not([class^="mt-"]):not([class*=" mt-"]) { margin-top: var(--sp-3); }
+
+    /* 文本节点盲区：`* + *` 只匹配元素，按钮里「图标 svg + 裸文本」是文本节点，
+       匹配不到，故对前置图标单独补右侧间距（对齐 gap: 6px）。 */
+    .btn > svg:first-child:not(:last-child) { margin-right: 6px; }
+
+    /* 方向翻转：`.product-tools` ≥768 由 column 变 row（见「工具条」一节），
+       兜底方向必须跟着切，否则桌面端写成 margin-top、方向反了等于没兜底。 */
+    @media (min-width: 1024px) {
+        .product-tools > * + *:not([class^="ml-"]):not([class*=" ml-"]) { margin-top: 0; margin-left: var(--sp-2); }
+    }
+}
+
+/* ── H5 数据批量导入：报告区（2026-09-24 对标批次1）── */
+.import-report { margin-top: var(--sp-4); }
+.import-report h3 { margin-bottom: var(--sp-2); }
+
+/* ── H5 弱网离线待传（H4，2026-09-24 第 6 轮对标）──
+   颜色/间距/圆角全走令牌；警示语义复用 --warning-*，双主题自动跟随。 */
+.offline-box {
+    margin-top: var(--sp-4);
+    padding: var(--sp-3) var(--sp-4);
+    border: 1px solid var(--warning-border);
+    border-radius: var(--radius-md);
+    background: var(--warning-bg);
+    color: var(--warning-text);
+}
+.offline-box-head {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+}
+.offline-box-title {
+    font-size: var(--fs-sm);
+    font-weight: 600;
+}
+.offline-box-count {
+    min-width: 22px;
+    padding: 0 var(--sp-2);
+    border-radius: var(--radius-full);
+    background: var(--warning-text);
+    color: var(--warning-bg);
+    font-size: var(--fs-2xs);
+    line-height: 20px;
+    text-align: center;
+}
+.offline-box-note {
+    margin: var(--sp-2) 0 0;
+    font-size: var(--fs-xs);
+    line-height: var(--lh-snug);
+}
+.offline-box-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--sp-2);
+    margin-top: var(--sp-3);
+}
+/* 动效克制：无动画；仅保证极窄屏下按钮不挤压正文 */
+@media (max-width: 640px) {
+    .offline-box-actions .btn { flex: 1 1 auto; }
+}
+
+/* ── 驾驶舱可归因降级说明（H8，2026-09-24 第 9 轮对标）──
+   警示语义走 --warning-*，双主题自动跟随；不加动画，极窄屏不撑破栅格。 */
+.decision-degrade-note {
+    margin: var(--sp-2) 0 0;
+    padding: var(--sp-2) var(--sp-3);
+    border-left: 3px solid var(--warning);
+    border-radius: var(--radius-sm);
+    background: var(--warning-bg);
+    color: var(--warning-text);
+    font-size: var(--fs-sm);
+    line-height: var(--lh-snug);
+}
+/* -- 面板 / 指标带 / 列表行（DIY / 多门店 / 任务 页族共用的类名）------------------
+   这些类名此前只出现在模板里、样式表一条规则都没有：真浏览器 computed style 实测
+   section.panel / .metric-strip / .metric / .list-row 全是 display:block + padding:0
+   + 透明底 + 无边框（即"卡片其实不存在"），而同站管理员看板是带卡片样式的
+   => 同一产品里两种观感。这里按既有令牌补齐表面层级，不写魔法数字。
+   app-header / pack-del-row / row-select / tab-text / note 这几个未定义类**故意不补**：
+   它们挂在已被父级规则样式化的元素上（如 .pack-del-row 本身就是 .btn.btn-outline），
+   属语义钩子而非缺样式。--------------------------------------------------------- */
+.panel {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: var(--sp-5);
+    box-shadow: var(--shadow-sm);
+}
+.metric-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--sp-3);
+    margin-bottom: var(--sp-4);
+}
+.metric {
+    flex: 1 1 140px;
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-2);
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: var(--sp-3) var(--sp-4);
+}
+.metric-label {
+    color: var(--text-light);
+    font-size: var(--fs-sm);
+    line-height: var(--lh-snug);
+}
+.metric strong {
+    font-size: var(--fs-lg);
+    line-height: var(--lh-snug);
+}
+.list-rows {
+    display: flex;
+    flex-direction: column;
+}
+.list-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-3);
+    padding: var(--sp-3) var(--sp-2);
+    border-top: 1px solid var(--border);
+}
+.list-row:first-child {
+    border-top: 0;
+}
+.stack-form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-4);
+}
+.checkbox-row {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    padding: var(--sp-2) 0;
+}
+.record-main {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-2);
+}
+@media (max-width: 639px) {
+    /* 手机档：指标带整行铺满、列表行让操作区另起一行（断点阶梯见文件头注释） */
+    .metric { flex: 1 1 100%; }
+    .panel { padding: var(--sp-4); }
+    .list-row { align-items: flex-start; }
+}
+
+</style>
+    <noscript></noscript>
+
+<script>
+/* 演示快照静态模式：拦截联网/写交互，统一友好提示 */
+(function () {
+    window.__SNAPSHOT__ = true;
+    var MSG = '演示快照为静态页面，写入与联网交互请在真实系统中体验';
+    function fakeResponse() {
+        if (typeof Response === 'function') {
+            return new Response(JSON.stringify({ok: false, reply: MSG, message: MSG}),
+                {status: 200, headers: {'Content-Type': 'application/json'}});
+        }
+        return { json: function () { return Promise.resolve({ok: false, reply: MSG, message: MSG}); } };
+    }
+    window.fetch = function () { return Promise.resolve(fakeResponse()); };
+    window.alert = function () {};
+    window.confirm = function () { return false; };
+    // U4：加静态只读角标，明确「本页仅浏览、写入为模拟」，消除交互按钮「坏了」的误读
+    function addHint() {
+        if (!document.body || document.querySelector('.snap-hint')) { return; }
+        var chip = document.createElement('div');
+        chip.className = 'snap-hint';
+        chip.textContent = '演示快照（静态只读）：交互按钮已模拟';
+        document.body.appendChild(chip);
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', addHint);
+    } else {
+        addHint();
+    }
+})();
+</script>
+</head>
+<body class="is-admin">
+    <a class="skip-link" href="#main">跳到主要内容</a>
+    <div class="container">
+        <header class="app-header">
+        
+        <nav class="top-nav">
+            <div class="nav-brand"><span class="brand-logo brand-nav" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 10h9v6a3.5 3.5 0 0 1-3.5 3.5H9.5A3.5 3.5 0 0 1 6 16v-6z"/><path d="M15 11h1.5a2 2 0 0 1 0 4H15"/><path d="M8.5 4.5c-.9.8-1.4 1.6-1.4 2.6M12 3.5c-.9.8-1.4 1.6-1.4 2.6M15.5 4.5c-.9.8-1.4 1.6-1.4 2.6" fill="none"/></svg></span>门店管理</div>
+            
+            <form method="GET" action="17_建包工作台.html" class="pack-switcher">
+                <input type="hidden" name="csrf_token" value="IjZmNDA5MjM3MzYyMjFmNjQ3NGQ2YWM3YjI5ZDVhZjlhMTQ4ZGQ4MDki.arikiw.QXZUscrLQZB7OGKigjYf59-hgsM">
+                <label for="adminPackSelect">行业包</label>
+                <select id="adminPackSelect" name="pack_id" aria-label="切换行业包">
+                    
+                    <option value="apparel">服装零售店</option>
+                    
+                    <option value="bakery">烘焙轻食店</option>
+                    
+                    <option value="beauty">美容美发/美甲店</option>
+                    
+                    <option value="convenience">便利店</option>
+                    
+                    <option value="fruit">水果生鲜店</option>
+                    
+                    <option value="milk_tea" selected>奶茶店（当前）</option>
+                    
+                    <option value="pet">宠物服务店</option>
+                    
+                </select>
+                <button type="submit" class="btn-pack-switch">切换</button>
+            </form>
+            
+            
+            <form method="GET" action="19_门店与成员.html" class="pack-switcher">
+                <input type="hidden" name="csrf_token" value="IjZmNDA5MjM3MzYyMjFmNjQ3NGQ2YWM3YjI5ZDVhZjlhMTQ4ZGQ4MDki.arikiw.QXZUscrLQZB7OGKigjYf59-hgsM">
+                <label for="adminStoreSelect">门店</label>
+                <select id="adminStoreSelect" name="store_id" aria-label="切换当前门店">
+                    
+                    <option value="1" selected>奶茶示范店（当前）</option>
+                    
+                    <option value="2">水果生鲜示范店</option>
+                    
+                    <option value="3">便利店示范店</option>
+                    
+                    <option value="4">烘焙轻食示范店</option>
+                    
+                    <option value="5">美业示范店</option>
+                    
+                    <option value="6">宠物服务示范店</option>
+                    
+                    <option value="7">服装零售示范店</option>
+                    
+                </select>
+                <button type="submit" class="btn-pack-switch">切换</button>
+                <a class="btn-pack-switch" href="19_门店与成员.html">管理</a>
+            </form>
+            
+            <div class="nav-user">
+                
+                
+                
+                <a class="btn-pack-switch" href="22_责任任务.html">任务</a>
+                <a class="btn-pack-switch" href="01_管理员看板.html">导入</a>
+                
+                <span>owner_demo</span>
+                <form method="GET" action="index.html" class="logout-form">
+                    <input type="hidden" name="csrf_token" value="IjZmNDA5MjM3MzYyMjFmNjQ3NGQ2YWM3YjI5ZDVhZjlhMTQ4ZGQ4MDki.arikiw.QXZUscrLQZB7OGKigjYf59-hgsM">
+                    <button type="submit" class="btn-logout">退出</button>
+                </form>
+                
+            </div>
+        </nav>
+        
+        </header>
+
+        <div class="flash-messages" role="status" aria-live="polite">
+            
+                
+            
+        </div>
+
+        <main class="main-content" id="main" tabindex="-1">
+            
+<div class="page-header has-actions">
+    <a href="01_管理员看板.html" class="btn-back">← 返回看板</a>
+    <h2>AI 经营分析</h2>
+    <a href="15_AI助手.html" class="btn btn-outline btn-sm">AI 智能助手</a>
+</div>
+
+<p class="login-subtitle">
+    基于真实经营数据自动生成综合分析报告，
+    <span class="badge badge-warning">规则版演示</span>
+    
+    <small class="text-muted">仅供参考，最终经营决策请由店主判断</small>
+</p>
+
+
+
+
+<div class="stat-cards">
+    <div class="stat-card"><div class="stat-num">¥139070.0</div><div class="stat-label">总营收</div></div>
+    <div class="stat-card"><div class="stat-num">9227</div><div class="stat-label">总销量(杯)</div></div>
+    <div class="stat-card"><div class="stat-num">¥4635.67</div><div class="stat-label">日均营收</div></div>
+    <div class="stat-card"><div class="stat-num">¥15.07</div><div class="stat-label">单均营收</div></div>
+</div>
+
+
+
+
+<div class="ai-insights">
+    
+    <div class="insight-card">
+        <h4>周期对比（近 7 日 vs 前 7 日）</h4>
+        
+        <span class="trend-badge up">
+            ↑ 销量 11.4%
+        </span>
+        
+        
+        <span class="trend-badge up">
+            ↑ 营收 12.2%
+        </span>
+        
+    </div>
+    
+    
+    <div class="insight-card">
+        <h4>销量预测</h4>
+        <div class="prediction">明日约 <strong>290.0</strong> 杯
+             · 营收 ≈ ¥4371
+        </div>
+    </div>
+    
+    
+    <div class="insight-card">
+        <h4>工作日 / 周末规律</h4>
+        <div class="prediction">工作日日均 306.6 杯 · 周末日均 309.4 杯</div>
+    </div>
+    
+    
+    <div class="insight-card">
+        <h4>AI 异常识别</h4>
+        
+        <div class="prediction">
+            检出 <strong>8</strong> 个异常日，
+            最新 2026-09-22（销量偏离 23.9%）
+        </div>
+        <div class="record-note neutral">判据：z-score（|z|≥2）+ IQR 双检测</div>
+    </div>
+    
+    
+    <div class="insight-card">
+        <h4>AI 备货建议（安全库存）</h4>
+        
+        <div class="prediction">生椰拿铁：补 <strong>24.3</strong> 杯</div>
+        
+        <div class="prediction">茉莉绿茶：补 <strong>22.4</strong> 杯</div>
+        
+        <div class="prediction">珍珠奶茶：补 <strong>18.3</strong> 杯</div>
+        
+    </div>
+    
+    
+    <div class="insight-card">
+        <h4>AI 组合推荐（购物篮）</h4>
+        <div class="prediction">
+            「四季春茶」+「抹茶奶绿」
+            提升度 <strong>1.5</strong>
+        </div>
+        <div class="record-note neutral">建议搭售或相邻陈列，小范围试点验证</div>
+    </div>
+    
+</div>
+
+
+
+
+<div class="section">
+    <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="18" height="18" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="2"/><rect x="9.5" y="9.5" width="5" height="5" rx="1"/><line x1="9" y1="2" x2="9" y2="5"/><line x1="15" y1="2" x2="15" y2="5"/><line x1="9" y1="19" x2="9" y2="22"/><line x1="15" y1="19" x2="15" y2="22"/><line x1="2" y1="9" x2="5" y2="9"/><line x1="2" y1="15" x2="5" y2="15"/><line x1="19" y1="9" x2="22" y2="9"/><line x1="19" y1="15" x2="22" y2="15"/></svg> AI 结论置信度与依据</h3>
+    <p class="text-muted trainer-hint">
+        共 7 条结论，平均置信度
+        <strong>85%（高）</strong>
+        <small> · 置信度由样本量与数据充分度推导，样本越少越保守</small>
+    </p>
+    
+    <div class="evidence-card">
+        <div class="record-header">
+            <span class="product-name">周期对比</span>
+            <span class="badge badge-success">
+                置信度 95%（高）
+            </span>
+        </div>
+        <div class="confidence-bar"><span class="confidence-fill" style="--pct: 95%"></span></div>
+        <p>近 7 日销量较前 7 日上升 11.4%，营收上升 12.2%。</p>
+        <ul class="evidence-list">
+            <li>对比窗口：近 7 日 vs 前 7 日（共 14 个统计日）</li><li>销量变动 11.4%，营收变动 12.2%</li>
+        </ul>
+        <div class="record-note neutral">局限：未剔除节假日与促销活动的结构性影响</div>
+    </div>
+    
+    <div class="evidence-card">
+        <div class="record-header">
+            <span class="product-name">销量预测</span>
+            <span class="badge badge-success">
+                置信度 95%（高）
+            </span>
+        </div>
+        <div class="confidence-bar"><span class="confidence-fill" style="--pct: 95%"></span></div>
+        <p>预计明日销量约 290.0 杯，营收约 ¥4371。</p>
+        <ul class="evidence-list">
+            <li>方法：指数平滑加权（近 14 日，半衰期 3 天） × 趋势系数 0.96（近3日均÷前4日均，限幅0.7~1.3） × 星期周期因子 0.94（明天周一，按历史周内节律季节调整）</li>
+        </ul>
+        <div class="record-note neutral">局限：趋势外推不适用于突变场景（天气骤变、临时活动、停业）</div>
+    </div>
+    
+    <div class="evidence-card">
+        <div class="record-header">
+            <span class="product-name">分产品预测</span>
+            <span class="badge badge-success">
+                置信度 81%（高）
+            </span>
+        </div>
+        <div class="confidence-bar"><span class="confidence-fill" style="--pct: 81%"></span></div>
+        <p>「黑糖珍珠鲜奶」明日需求约 49.8 份，为当前需求最高的单品。</p>
+        <ul class="evidence-list">
+            <li>近 14 日指数平滑加权均值 38.3 份（半衰期 3 天） × 趋势系数 1.3</li><li>模型自评稳定度 0.8（含波动率惩罚）</li>
+        </ul>
+        <div class="record-note neutral">局限：单品样本天数少于 3 天时不输出预测</div>
+    </div>
+    
+    <div class="evidence-card">
+        <div class="record-header">
+            <span class="product-name">备货建议</span>
+            <span class="badge badge-success">
+                置信度 95%（高）
+            </span>
+        </div>
+        <div class="confidence-bar"><span class="confidence-fill" style="--pct: 95%"></span></div>
+        <p>建议为「生椰拿铁」补 24.3 份原料/成品。</p>
+        <ul class="evidence-list">
+            <li>计算口径：日均需求 34.1 + 安全库存 20.2 − 现存 30.0</li><li>服务水平 95%（安全库存 = 1.65 × 波动 σ=12.21）</li>
+        </ul>
+        <div class="record-note neutral">局限：未考虑在途订货与临期原料，实际下单请结合盘点结果</div>
+    </div>
+    
+    <div class="evidence-card">
+        <div class="record-header">
+            <span class="product-name">组合推荐</span>
+            <span class="badge badge-success">
+                置信度 95%（高）
+            </span>
+        </div>
+        <div class="confidence-bar"><span class="confidence-fill" style="--pct: 95%"></span></div>
+        <p>「四季春茶」与「抹茶奶绿」存在正向关联（提升度 1.5），建议做搭售或相邻陈列。</p>
+        <ul class="evidence-list">
+            <li>共现天数 20 / 总营业日 30（支持度 0.667）</li><li>置信度 1.0 · 提升度 1.5（&gt;1 为正相关）</li>
+        </ul>
+        <div class="record-note neutral">局限：相关性不等于因果，搭售效果需小范围试点验证</div>
+    </div>
+    
+    <div class="evidence-card">
+        <div class="record-header">
+            <span class="product-name">异常识别</span>
+            <span class="badge badge-success">
+                置信度 95%（高）
+            </span>
+        </div>
+        <div class="confidence-bar"><span class="confidence-fill" style="--pct: 95%"></span></div>
+        <p>检测到 8 个异常经营日，最新为 2026-09-22 （销量偏离 23.9%）。</p>
+        <ul class="evidence-list">
+            <li>判据：z-score（|z|≥2）与 IQR（1.5×四分位距）双检测</li><li>该日实际 381.0 vs 期望 307.57（z-score+IQR）</li>
+        </ul>
+        <div class="record-note neutral">局限：异常不等于事故，需结合异常备注与当日实际情况复核</div>
+    </div>
+    
+    <div class="evidence-card">
+        <div class="record-header">
+            <span class="product-name">损耗预警</span>
+            <span class="badge badge-danger">
+                置信度 38%（低）
+            </span>
+        </div>
+        <div class="confidence-bar"><span class="confidence-fill" style="--pct: 38%"></span></div>
+        <p>存在 2 条原料损耗/异常记录，建议优先排查。</p>
+        <ul class="evidence-list">
+            <li>最新：2026-09-27 · 生椰拿铁 · 原料损耗率 21.1% 超过预警阈值 15%</li><li>判定规则：损耗率 &gt; 15% 或存在异常备注</li>
+        </ul>
+        <div class="record-note neutral">局限：损耗率为按行填报口径估算，未区分原料品类</div>
+    </div>
+    
+</div>
+
+
+
+<div class="section">
+    <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="18" height="18" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="2"/><rect x="9.5" y="9.5" width="5" height="5" rx="1"/><line x1="9" y1="2" x2="9" y2="5"/><line x1="15" y1="2" x2="15" y2="5"/><line x1="9" y1="19" x2="9" y2="22"/><line x1="15" y1="19" x2="15" y2="22"/><line x1="2" y1="9" x2="5" y2="9"/><line x1="2" y1="15" x2="5" y2="15"/><line x1="19" y1="9" x2="22" y2="9"/><line x1="19" y1="15" x2="22" y2="15"/></svg> 分析结论</h3>
+    
+        
+        
+            
+                
+                    <h4 class="analysis-sec">【① 经营概况】</h4>
+                
+            
+                
+                    <p>统计期总营收 ¥139,070，总销量 9227 杯，日均营收 ¥4,636，客单价 ¥15。</p>
+                
+            
+                
+                    <h4 class="analysis-sec">【② 趋势与结构】</h4>
+                
+            
+                
+                    <p>销量近 7 日日均 327 杯，较前 7 日增长 11%。热销 TOP：杨枝甘露、芝士葡萄、双拼果茶；销售结构：杨枝甘露(725杯)、柠檬水(705杯)、四季春茶(663杯)、抹茶奶绿(614杯)。</p>
+                
+            
+                
+                    <p>近 7 日较前 7 日：销量上涨11.4%、营收上涨12.2%。</p>
+                
+            
+                
+                    <p>工作日与周末日均销量接近（306.6/309.4 杯），备货节奏可保持平稳。</p>
+                
+            
+                
+                    <p>综合毛利率 64.5%（按已录成本口径，280/300 条填报核入）。</p>
+                
+            
+                
+                    <h4 class="analysis-sec">【③ 风险提示】</h4>
+                
+            
+                
+                    <p>近期 2 条原料损耗预警，集中在 生椰拿铁、柠檬蜂蜜茶，建议按《损耗控制》逐项排查。</p>
+                
+            
+                
+                    <p>AI 离群检测发现 8 个异常经营日，最新为 2026-09-22 （销量 381.0，偏离常态 23.9%）。建议核对当日异常备注与天气/活动因素。</p>
+                
+            
+                
+                    <h4 class="analysis-sec">【④ 优化建议】</h4>
+                
+            
+                
+                    <p>预计明日销量约 290.0 杯、营收约 ¥4,371（基于近 7 日趋势外推，仅供参考），建议按此量级预备原料与人力。</p>
+                
+            
+                
+                    <p>安全库存模型测算需补货：生椰拿铁 约 24.3 份、茉莉绿茶 约 22.4 份（按 95% 服务水平）。</p>
+                
+            
+                
+                    <p>购物篮分析显示「四季春茶」与「抹茶奶绿」正相关（提升度 1.5，共现 20 天），建议做搭售或相邻陈列。</p>
+                
+            
+                
+                    <p>建议保持热销品按 1.1-1.2 倍预备、易损鲜果少备勤补，并持续录入成本价以支撑毛利分析。（规则版分析基于真实数据模板生成，配置 Dify 后由大模型输出深度洞察）</p>
+                
+            
+        
+    
+    <p class="note">生成时间：2026-09-27 13:07（规则版·演示）</p>
+</div>
+
+
+
+<details class="agent-trace">
+    <summary class="trace-summary">
+        <span class="badge badge-warning">规则版</span>
+        <span class="trace-title">AI 决策轨迹</span>
+        <span class="trace-meta">7 步 · 0 ms</span>
+    </summary>
+    <ol class="trace-steps">
+    
+        <li class="trace-step">
+            <div class="trace-step-head">
+                <span class="trace-step-name">analytics.stats</span>
+                <span class="badge badge-warning">本地计算</span>
+                <span class="trace-ms">0 ms</span>
+            </div>
+            
+            <div class="trace-io"><span class="trace-io-k">输入</span><span class="trace-io-v">读取门店真实经营数据</span></div>
+            
+            <div class="trace-io"><span class="trace-io-k">输出</span><span class="trace-io-v">总营收 ¥139070.0、总销量 9227、日均 ¥4635.67</span></div>
+        </li>
+    
+        <li class="trace-step">
+            <div class="trace-step-head">
+                <span class="trace-step-name">forecast.eval</span>
+                <span class="badge badge-warning">本地计算</span>
+                <span class="trace-ms">0 ms</span>
+            </div>
+            
+            <div class="trace-io"><span class="trace-io-k">输出</span><span class="trace-io-v">明日约 290.0 杯，营收约 ¥4371.0</span></div>
+        </li>
+    
+        <li class="trace-step">
+            <div class="trace-step-head">
+                <span class="trace-step-name">period.compare</span>
+                <span class="badge badge-warning">本地计算</span>
+                <span class="trace-ms">0 ms</span>
+            </div>
+            
+            <div class="trace-io"><span class="trace-io-k">输出</span><span class="trace-io-v">销量 11.4% / 营收 12.2%</span></div>
+        </li>
+    
+        <li class="trace-step">
+            <div class="trace-step-head">
+                <span class="trace-step-name">anomaly.detect</span>
+                <span class="badge badge-warning">本地计算</span>
+                <span class="trace-ms">0 ms</span>
+            </div>
+            
+            <div class="trace-io"><span class="trace-io-k">输出</span><span class="trace-io-v">检出 8 个异常日</span></div>
+        </li>
+    
+        <li class="trace-step">
+            <div class="trace-step-head">
+                <span class="trace-step-name">basket.assoc</span>
+                <span class="badge badge-warning">本地计算</span>
+                <span class="trace-ms">0 ms</span>
+            </div>
+            
+            <div class="trace-io"><span class="trace-io-k">输出</span><span class="trace-io-v">「四季春茶」+「抹茶奶绿」提升度 1.5</span></div>
+        </li>
+    
+        <li class="trace-step">
+            <div class="trace-step-head">
+                <span class="trace-step-name">conclusion</span>
+                <span class="badge badge-warning">本地计算</span>
+                <span class="trace-ms">0 ms</span>
+            </div>
+            
+            <div class="trace-io"><span class="trace-io-k">输入</span><span class="trace-io-v">汇总数据 → 生成分析报告</span></div>
+            
+            <div class="trace-io"><span class="trace-io-k">输出</span><span class="trace-io-v">【① 经营概况】 统计期总营收 ¥139,070，总销量 9227 杯，日均营收 ¥4,636，客单价 ¥15。 【② 趋势与结构】 销量近 7 日日均 327 杯，较前 7 日增长 11%。热销 TOP：杨枝甘露、芝士葡萄、双拼果茶；销售结构：杨枝甘露(725杯)、柠檬水(705杯)、四季春茶(663杯)、抹茶奶绿…</span></div>
+        </li>
+    
+        <li class="trace-step">
+            <div class="trace-step-head">
+                <span class="trace-step-name">evidence.summary</span>
+                <span class="badge badge-warning">本地计算</span>
+                <span class="trace-ms">0 ms</span>
+            </div>
+            
+            <div class="trace-io"><span class="trace-io-k">输入</span><span class="trace-io-v">逐条结论的置信度与数据依据</span></div>
+            
+            <div class="trace-io"><span class="trace-io-k">输出</span><span class="trace-io-v">7 条结论，平均置信度 85%</span></div>
+        </li>
+    
+    </ol>
+    <p class="record-note neutral">轨迹为本次推理的真实记录：数据取自门店填报与知识库，结论仅供参考。</p>
+</details>
+
+
+
+
+<div class="section">
+    <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="18" height="18" aria-hidden="true"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> 原料损耗预警（2）</h3>
+    <div class="record-list" id="bizWasteList" data-collapse-list>
+        
+        <div class="record-item">
+            <div class="record-header">
+                <span class="product-name">生椰拿铁</span>
+                <span class="badge badge-danger">2026-09-27</span>
+            </div>
+            <div class="record-note">原料损耗率 21.1% 超过预警阈值 15%</div>
+            
+            <div class="record-note neutral">AI 归因（仅供参考）：待排查 — </div>
+            
+        </div>
+        
+        <div class="record-item">
+            <div class="record-header">
+                <span class="product-name">柠檬蜂蜜茶</span>
+                <span class="badge badge-danger">2026-09-26</span>
+            </div>
+            <div class="record-note">原料损耗率 21.1% 超过预警阈值 15%</div>
+            
+            <div class="record-note neutral">AI 归因（仅供参考）：待排查 — </div>
+            
+        </div>
+        
+    </div>
+    
+</div>
+
+
+<div class="section">
+    <a href="15_AI助手.html" class="btn btn-primary btn-block">向 AI 助手提问经营问题 →</a>
+</div>
+
+        </main>
+
+        
+        <footer class="site-footer">
+            <p>智电轻擎 · 全行业多门店轻量化 AI 管理平台</p>
+            <p>页面展示的均为演示数据，不涉及真实门店经营信息。</p>
+        </footer>
+    </div>
+
+    <!-- 店员端固定底部 Tab 导航（4 页高频切换；仅店员身份渲染，管理员端保持 PC 网格导航） -->
+    
+
+    <!-- 主题切换（全局浮动 fab，内联脚本保证快照剥离 main.js 后仍可切换） -->
+    <button type="button" class="theme-toggle theme-fab" id="themeToggle"
+            title="切换深色/浅色" aria-label="切换深色/浅色">
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="20" height="20" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="20" height="20" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+    </button>
+    <script>
+    (function () {
+        var btn = document.getElementById('themeToggle');
+        if (!btn) return;
+        var mq = window.matchMedia('(prefers-color-scheme: dark)');
+        function isDark() {
+            var t = document.documentElement.dataset.theme;
+            return t ? t === 'dark' : true; // 缺省默认墨绿黑暗主题
+        }
+        function syncIcon() {
+            // 图标语义 = 点击后切换到的目标主题：暗色显示太阳（切亮），亮色显示月亮（切暗）
+            var dark = isDark();
+            var sun = btn.querySelector('.icon-sun');
+            var moon = btn.querySelector('.icon-moon');
+            if (sun) sun.style.display = dark ? 'block' : 'none';
+            if (moon) moon.style.display = dark ? 'none' : 'block';
+        }
+        syncIcon();
+        btn.addEventListener('click', function () {
+            var next = isDark() ? 'light' : 'dark';
+            try { localStorage.setItem('ican-theme', next); } catch (e) {}
+            document.documentElement.dataset.theme = next;
+            var meta = document.querySelector('meta[name="theme-color"]');
+            if (meta) meta.content = next === 'light' ? '#0F766E' : '#0B1B19';
+            syncIcon();
+            // 即时切换无需整页 reload；含 ECharts 的页面（如管理员看板）监听本事件重绘
+            document.dispatchEvent(new Event('ichart-theme'));
+        });
+        if (mq.addEventListener) mq.addEventListener('change', syncIcon);
+    })();
+    </script>
+    <noscript><style>
+    /* 无 JS：折叠列表全量展开（不出现「看不到全部」），折叠按钮隐藏（不出现「点了没反应」） */
+    .record-list.is-collapsed .record-item { display: block !important; }
+    .record-list.is-collapsed .record-item:nth-child(5) { border-bottom: 1px solid var(--border); border-radius: 0; }
+    .record-list.is-collapsed .record-item:last-child { border-bottom: none; border-radius: 0 0 var(--radius-lg) var(--radius-lg); }
+    [data-collapse-toggle] { display: none !important; }
+    </style></noscript>
+    <script>
+    // 长列表折叠 + 顶栏滚动分层（内联：快照剥离 main.js 后仍生效）
+    (function () {
+        function initCollapse() {
+            Array.prototype.forEach.call(document.querySelectorAll('[data-collapse-list]'), function (list) {
+                if (!list.id) return;
+                var btn = document.querySelector('[data-collapse-toggle="' + list.id + '"]');
+                if (!btn) return;
+                btn.hidden = false;
+                function sync() {
+                    var collapsed = list.classList.contains('is-collapsed');
+                    btn.textContent = collapsed ? (btn.getAttribute('data-label-more') || '展开全部')
+                                                : (btn.getAttribute('data-label-less') || '收起');
+                    btn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+                }
+                btn.addEventListener('click', function () {
+                    list.classList.toggle('is-collapsed');
+                    sync();
+                });
+                sync();
+            });
+        }
+        function initNav() {
+            var nav = document.querySelector('.top-nav');
+            if (!nav) return;
+            function refresh() { nav.classList.toggle('scrolled', window.scrollY > 4); }
+            window.addEventListener('scroll', refresh, { passive: true });
+            refresh();
+        }
+        function init() { initCollapse(); initNav(); }
+        if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', init); }
+        else { init(); }
+    })();
+    </script>
+    <script>
+    // ── echarts 按需加载器（性能 P0-2）────────────────────────────
+    // `echarts.custom.js` 604KB，同步加载会把手机端首屏整个堵住（H5 培训页尤甚）。
+    // 改为：图表容器进入视口（或页面已有该请求）时才拉取引擎，首屏不再被它阻塞。
+    // 内联而非放 main.js：快照会剥离 main.js，内联可保证快照里图表仍可用。
+    // 幂等解包：该文件是 rolldown 的 IIFE 产物，`window.echarts` 实际是 `{default: api}`
+    // （键集实测仅 ['default']），不解包则 `echarts.init` 为 undefined、图表静默不渲染。
+    (function () {
+        var SRC = "/static/js/echarts.custom.js?v=1789668034";
+        var queue = [], loading = false;
+        function unwrap() {
+            if (window.echarts && !window.echarts.init && window.echarts.default) {
+                window.echarts = window.echarts.default;
+            }
+        }
+        window.withEcharts = function (cb) {
+            if (window.echarts && typeof window.echarts.init === 'function') { cb(); return; }
+            queue.push(cb);
+            if (loading) return;
+            loading = true;
+            var s = document.createElement('script');
+            s.src = SRC;
+            s.async = true;
+            s.onload = function () {
+                unwrap();
+                loading = false;
+                var q = queue;
+                queue = [];
+                q.forEach(function (f) { try { f(); } catch (e) {} });
+            };
+            // 加载失败只放弃图表，不影响页面其余功能（不留半开锁）
+            s.onerror = function () { loading = false; queue = []; };
+            document.head.appendChild(s);
+        };
+    })();
+    </script>
+    
+    
+<nav class="snap-nav" aria-label="页面导航"><a href="06_考核明细.html">← 上一页</a><a href="index.html">返回总览</a><a href="15_AI助手.html">下一页 →</a></nav></body>
+</html>

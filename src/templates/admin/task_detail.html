@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block title %}任务详情 · 门店管理助手{% endblock %}
+{% block body_class %}is-admin{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h2>{{ task.title }}</h2>
+    <a class="btn btn-outline btn-sm" href="{{ url_for('tasks.task_list') }}">返回任务列表</a>
+</div>
+
+<section class="panel">
+    <div class="metric-strip">
+        <div class="metric"><span class="metric-label">门店</span><strong>{{ store_name }}</strong></div>
+        <div class="metric"><span class="metric-label">负责人</span><strong>{{ assignee }}</strong></div>
+        <div class="metric"><span class="metric-label">截止时间</span><strong>{{ task.due_date.isoformat() }}</strong></div>
+        <div class="metric"><span class="metric-label">状态</span><strong>{{ status_labels.get(task.status, task.status) }}{{ ' · 已逾期' if overdue else '' }}</strong></div>
+    </div>
+    {% if task.detail %}<p>{{ task.detail }}</p>{% endif %}
+    {% if task.evidence_json %}
+    <details>
+        <summary>证据</summary>
+        <pre class="task-evidence">{{ task.evidence_json }}</pre>
+    </details>
+    {% endif %}
+</section>
+
+<section class="panel">
+    <h3>状态流转</h3>
+    <div class="task-actions">
+        {% for target in transitions %}
+        <form method="POST" action="{{ url_for('tasks.task_status', task_id=task.id) }}" class="inline-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="status" value="{{ target }}">
+            <button class="btn btn-outline btn-sm" type="submit">
+                {{ '重新打开' if target == 'in_progress' and task.status == 'done' else status_labels.get(target, target) }}
+            </button>
+        </form>
+        {% else %}
+        <span class="text-muted">当前状态没有可执行的流转。</span>
+        {% endfor %}
+    </div>
+</section>
+
+{% if takeover_eligible %}
+<section class="panel">
+    <h3>遗留接管</h3>
+    <p class="text-muted">该任务已逾期停滞，可由他人接管完成。接管只换负责人，不动状态与已有上下文；需注明原因，且同一任务不可被重复认领。</p>
+    <form method="POST" action="{{ url_for('tasks.task_takeover', task_id=task.id) }}" class="task-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="expected" value="{{ current_key }}">
+        <div class="form-row">
+            <div class="form-group">
+                <label for="takeoverAssignee">接管人</label>
+                <select id="takeoverAssignee" class="form-control" name="assignee">
+                    {% for opt in assignee_options %}
+                    <option value="{{ opt.value }}">{{ opt.label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="takeoverReason">接管原因</label>
+                <input id="takeoverReason" class="form-control" name="reason" maxlength="200" placeholder="如：原负责人离职，由店长接管">
+            </div>
+        </div>
+        <button class="btn btn-primary btn-sm" type="submit">确认接管</button>
+    </form>
+</section>
+{% endif %}
+
+{% if task.status == 'done' %}
+<section class="panel">
+    <h3>效果回看</h3>
+    <form method="POST" action="{{ url_for('tasks.task_review', task_id=task.id) }}" class="task-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="form-row">
+            <div class="form-group">
+                <label for="beforeMetric">执行前指标</label>
+                <input id="beforeMetric" class="form-control" name="before_metric" placeholder="损耗率">
+            </div>
+            <div class="form-group">
+                <label for="beforeValue">执行前数值</label>
+                <input id="beforeValue" class="form-control" name="before_value" placeholder="18%">
+            </div>
+            <div class="form-group">
+                <label for="afterMetric">执行后指标</label>
+                <input id="afterMetric" class="form-control" name="after_metric" placeholder="损耗率">
+            </div>
+            <div class="form-group">
+                <label for="afterValue">执行后数值</label>
+                <input id="afterValue" class="form-control" name="after_value" placeholder="12%">
+            </div>
+        </div>
+        <div class="form-group">
+            <label for="reviewNote">回看备注</label>
+            <textarea id="reviewNote" class="form-control" name="review_note" rows="3" required>{{ task.review_note or '' }}</textarea>
+        </div>
+        <button type="submit" class="btn btn-primary btn-sm">保存回看</button>
+    </form>
+    {% if task.review_note %}
+    <p class="text-muted">已保存回看：{{ task.review_note }}</p>
+    {% endif %}
+</section>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,29 @@
+{
+  "manifest_format": 1,
+  "pack_id": "pet",
+  "pack_version": "1.0.0",
+  "schema_min": 1,
+  "schema_max": 1,
+  "requires": [
+    "custom_terms",
+    "dashboard_labels",
+    "decision_cockpit",
+    "free_metrics",
+    "multi_store",
+    "negotiation",
+    "pack_products",
+    "pack_scoped_unique"
+  ],
+  "vendor": "builtin",
+  "exported_at": "None",
+  "integrity": {
+    "knowledge/健康与安全.md": "sha256:9fe0d4f2a52af1100f7ed06c3fe6c12d261808654c14f6f69624a3131239b2dd",
+    "knowledge/宠物行为管理.md": "sha256:8feeb7ab7ee4a0145467fec7146a5eb965e6d18218b341a404a77b92a73b37c5",
+    "knowledge/洗护流程.md": "sha256:4af198a530f7eea6bc471ce4a24778671bc6320154ca7b1f5144ff8805fa3c8e",
+    "knowledge/门店服务与会员.md": "sha256:b24d990d943298682c2d85f034a148ffebf39c3030eaa614730c5eb80e9379a0",
+    "pack.json": "sha256:1b95865678a9c33343cad0da37bfb47c8dfef58591676daeb048191f2aa3ea09",
+    "products.json": "sha256:7934d072104c2e98f3b95baa0f638cbbe5fcd2f9de48e72bc535ea8473790953",
+    "questions.json": "sha256:fbb19d964ae3f63a27b4d974524c31aa68cb12f57576351d141e2083c7ee7ed7",
+    "scenarios.json": "sha256:faf826fb2c983b5f26900d415b07c245fff5caa970bf6ffe95ff8fd1366e90a5"
+  }
+}

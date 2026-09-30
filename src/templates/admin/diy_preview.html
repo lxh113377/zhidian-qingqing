@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}草稿预览 · 门店管理助手{% endblock %}
+{% block body_class %}is-admin{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h2>草稿预览</h2>
+    <span class="chip">来源：{{ 'AI 草稿' if entry.source == 'ai' else '规则模板' }} · 完整性 {{ validation.score }}/100</span>
+</div>
+
+{% if validation.errors %}
+<div class="flash flash-danger" role="status">
+    <span>校验问题：{{ validation.errors[:3] | join('；') }}</span>
+</div>
+{% endif %}
+{% if validation.warnings %}
+<div class="flash flash-warning" role="status">
+    <span>提示：{{ validation.warnings[:3] | join('；') }}</span>
+</div>
+{% endif %}
+
+<section class="panel">
+    <h3>{{ draft.name }}</h3>
+    <p class="text-muted">{{ draft.description }}</p>
+    <div class="list-rows">
+        <div class="list-row"><span>行业术语</span><span>{{ draft.terms.store }} / {{ draft.terms.record_dimension }} / {{ draft.terms.quantity_unit }}</span></div>
+        <div class="list-row"><span>指标（角色）</span><span>{{ draft.metrics | length }} 项：{{ draft.metrics | map(attribute='role') | join('、') }}</span></div>
+        <div class="list-row"><span>知识域</span><span>{{ domains | join('、') }}</span></div>
+        <div class="list-row"><span>题库 / 情景 / 产品</span><span>{{ draft.questions | length }} / {{ draft.scenarios.pool | length }} / {{ draft.products | length }}</span></div>
+    </div>
+</section>
+
+<section class="panel">
+    <h3>确认落库</h3>
+    <p class="text-muted">草稿尚未写入数据库。确认后将创建行业包；包标识需为小写字母开头（字母/数字/下划线）。</p>
+    <form method="POST" action="{{ url_for('diy.diy_confirm', token=token) }}" class="inline-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="text" name="pack_id" class="form-control" required maxlength="50"
+               placeholder="包标识，如 my_shop" pattern="[a-z][a-z0-9_]{0,49}">
+        <button type="submit" class="btn btn-primary">确认创建</button>
+    </form>
+    <form method="POST" action="{{ url_for('diy.diy_discard', token=token) }}" class="inline-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn btn-outline">丢弃草稿</button>
+    </form>
+</section>
+{% endblock %}

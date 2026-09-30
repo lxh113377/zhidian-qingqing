@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% import "_icons.html" as icons %}
+{% block title %}演示数据重建 · 门店管理助手{% endblock %}
+{% block body_class %}is-admin{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h2>演示数据重建</h2>
+    <span class="chip">仅平台管理员可操作</span>
+</div>
+
+<section class="section">
+    <div class="record-list">
+        <div class="record-item">
+            <div class="record-header">
+                <strong>{{ icons.alert(18) }} 全库重置风险</strong>
+                <span class="badge badge-danger">不可撤销</span>
+            </div>
+            <div class="record-note">
+                将删除全部历史流水、账号、门店、产品、指标、培训与 AI 用量记录，
+                重建为一个商家、七家门店的 30 天演示租户。操作前必须自动备份成功，
+                否则拒绝执行。老板、店长、店员旧会话会失效；平台管理员会话保留。
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="section">
+    <h3>当前数据</h3>
+    <div class="stat-cards">
+        <div class="stat-card"><div class="stat-num">{{ stats.merchants }}</div><div class="stat-label">商家</div></div>
+        <div class="stat-card"><div class="stat-num">{{ stats.stores }}</div><div class="stat-label">门店</div></div>
+        <div class="stat-card"><div class="stat-num">{{ stats.accounts }}</div><div class="stat-label">账号</div></div>
+        <div class="stat-card"><div class="stat-num">{{ stats.products }}</div><div class="stat-label">产品</div></div>
+        <div class="stat-card"><div class="stat-num">{{ stats.metrics }}</div><div class="stat-label">指标</div></div>
+        <div class="stat-card"><div class="stat-num">{{ stats.sales }}</div><div class="stat-label">营业流水</div></div>
+        <div class="stat-card"><div class="stat-num">{{ stats.quiz }}</div><div class="stat-label">培训记录</div></div>
+        <div class="stat-card"><div class="stat-num">{{ stats.abnormal }}</div><div class="stat-label">异常案例</div></div>
+    </div>
+</section>
+
+<section class="section">
+    <h3>目标门店</h3>
+    <div class="table-responsive">
+        <table class="table">
+            <caption class="sr-only">演示数据将覆盖的目标门店清单（门店 / 编码 / 行业包 / 店长）</caption>
+            <thead><tr><th scope="col">门店</th><th scope="col">编码</th><th scope="col">行业包</th><th scope="col">店长</th></tr></thead>
+            <tbody>
+                {% for spec in stores %}
+                <tr>
+                    <td>{{ spec.store_name }}</td>
+                    <td>{{ spec.store_code }}</td>
+                    <td>{{ spec.pack_id }}</td>
+                    <td>{{ spec.pack_id }}_manager</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<section class="section">
+    <h3>重建后账号</h3>
+    <div class="table-responsive">
+        <table class="table">
+            <caption class="sr-only">重建后生成的演示账号（角色 / 账号 / 密码 / 范围）</caption>
+            <thead><tr><th scope="col">角色</th><th scope="col">账号</th><th scope="col">密码</th><th scope="col">范围</th></tr></thead>
+            <tbody>
+                {% for account in accounts %}
+                <tr>
+                    <td>{{ account.role }}</td>
+                    <td><code>{{ account.username }}</code></td>
+                    <td><code>{{ account.password }}</code></td>
+                    <td>{{ account.store }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<section class="section">
+    <h3>确认重建</h3>
+    <form method="POST" action="{{ url_for('admin.platform_demo_reset') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="reset_nonce" value="{{ reset_nonce }}">
+        <div class="form-group">
+            <label for="confirm_phrase">输入确认短语 <code>{{ confirm_phrase }}</code></label>
+            <input type="text" name="confirm_phrase" id="confirm_phrase"
+                   class="form-control" required autocomplete="off">
+        </div>
+        <div class="form-group">
+            <label>
+                <input type="checkbox" name="confirm_checkbox" value="1" required>
+                我已确认这是全库重置，并接受旧会话失效与数据覆盖风险。
+            </label>
+        </div>
+        <button type="submit" class="btn btn-danger">备份并重建演示数据库</button>
+    </form>
+</section>
+{% endblock %}

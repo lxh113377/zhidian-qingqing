@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}商家注册 · 门店管理助手{% endblock %}
+{% block nav %}{% endblock %}
+{% block content %}
+<div class="login-page">
+    <div class="login-card">
+        <h1>商家注册</h1>
+        <span class="chip">一个账号一个商家 · 可管理多家门店</span>
+        {% if not signup_enabled %}
+        <div class="flash flash-warning" role="status">
+            <span>当前未开放自助注册（邮件服务未配置）。请联系平台管理员人工开户。</span>
+        </div>
+        {% endif %}
+        <form method="POST" action="{{ url_for('auth.register') }}" class="login-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="form-group">
+                <label for="email">邮箱</label>
+                <input type="email" name="email" id="email" class="form-control" required
+                       placeholder="用于接收验证码" autocomplete="email"
+                       {% if not signup_enabled %}disabled{% endif %}>
+            </div>
+            <button type="submit" class="btn btn-primary btn-block"
+                    {% if not signup_enabled %}disabled{% endif %}>发送验证码</button>
+        </form>
+        <div class="login-hint">
+            <p><a href="{{ url_for('auth.login') }}">返回登录</a></p>
+            <p class="mt-6 text-muted">验证码仅存哈希，10 分钟内有效，最多校验 5 次。</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

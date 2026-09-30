@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% import "_icons.html" as icons %}
+{% block title %}情景模拟对话 · 门店管理助手{% endblock %}
+{% block body_class %}h5-page{% endblock %}
+{% block content %}
+<div class="page-header">
+    <a href="{{ url_for('ai.hub') }}" class="btn-back">← 返回 AI 培训</a>
+    <h2>情景模拟对话</h2>
+</div>
+
+{# 情景标签由后端白名单（SCENARIO_LABELS）下发，模板兜底一份保持可独立渲染 #}
+{% set labels = scenario_labels or {'bargain': '砍价', 'safety': '卫生担忧', 'pick': '挑剔服务'} %}
+<div class="scenario-tabs">
+    {% for key, label in labels.items() %}
+    <a href="{{ url_for('ai.chat', scenario=key) }}" class="{{ 'active' if scenario==key }}">{{ label }}</a>
+    {% endfor %}
+</div>
+
+{# 顾客情绪状态徽章（第五轮）：耐心值/情绪由店员表现实时驱动，无状态机数据时隐藏 #}
+{% set _p = (mood.get('patience') | float) if mood else 0 %}
+<div class="mood-bar" id="moodBar"{% if not mood or not mood.get('mood') %} hidden{% endif %}>
+    <span>顾客情绪</span>
+    <span class="mood-badge" id="moodBadge" data-mood="{{ mood.get('mood') if mood else '' }}">{{ mood.get('label') if mood else '' }}</span>
+    <span class="mood-track"><i class="mood-fill" id="moodFill" data-level="{{ 'low' if _p < 35 else ('mid' if _p < 60 else 'high') }}" style="--pct: {{ _p }}%"></i></span>
+    <span class="mood-patience">耐心值 <b id="moodPatience">{{ _p | int }}</b>/100</span>
+</div>
+
+{# 谈判面板（P5）：心理价区间 / 当前谈价 / 让步进度。
+   隐藏底线只给区间提示不报精确值——真实谈判里没有读心术。
+   数值由后端 negotiation.visible_state() 下发，规则版与在线版均产出。 #}
+{% set _n = negotiation or {} %}
+{% set _range = _n.get('price_range') or [0, 0] %}
+{% set _v = _n.get('verdict') or {} %}
+<div class="nego-panel" id="negoPanel"{% if not _n %} hidden{% endif %}>
+    <div class="nego-row">
+        <span class="nego-chip">心理价 ¥<b id="negoRangeLow">{{ _range[0] }}</b>~¥<b id="negoRangeHigh">{{ _range[1] }}</b></span>
+        <span class="nego-chip">当前谈价 ¥<b id="negoPrice">{{ _n.get('current_price', 0) }}</b></span>
+        <span class="nego-status" id="negoStatus" data-result="{{ _v.get('result', '') }}">{{ _v.get('reason', '谈判进行中，顾客仍在观望') }}</span>
+    </div>
+    <div class="nego-progress">
+        <span class="nego-progress-label">让步进度</span>
+        <span class="nego-track"><i class="nego-fill" id="negoFill" style="--pct: {{ _n.get('progress', 0) }}%"></i></span>
+        <span class="nego-pct"><b id="negoPct">{{ _n.get('progress', 0) }}</b>%</span>
+    </div>
+</div>
+
+<div class="chat-log" role="log" aria-live="polite" aria-label="与 AI 顾客的情景对话">
+    {% for line in history %}
+        {% if line.startswith('店员：') %}
+        <div class="bubble staff">{{ line[3:] }}</div>
+        {% elif line.startswith('顾客：') %}
+        <div class="bubble customer">{{ line[3:] }}</div>
+        {% else %}
+        <div class="bubble">{{ line }}</div>
+        {% endif %}
+    {% endfor %}
+</div>
+
+{% if finished %}
+{# 谈判复盘卡（P5）：成交/流失结论 + 让利幅度 + 四维评分（价值锚定/让步节奏/
+   情绪管理/成交结果，顺序由后端固定）+ 改进建议。纯规则版离线可产出。 #}
+{% if review %}
+<div class="review-card {{ 'ok' if review.deal else 'no' }}">
+    <div class="review-head">
+        <span class="review-verdict">{{ icons.result(20) if review.deal else icons.fail(20) }}
+            {{ '成交' if review.deal else ('流失' if review.result == 'lost' else '未决') }}</span>
+        <span class="review-total">谈判综合 <b>{{ review.total }}</b> 分 · {{ review.level }}</span>
+    </div>
+    <p class="review-reason">{{ review.reason }}（让利幅度 {{ review.concession_pct }}%）</p>
+    <div class="review-scores">
+        {% for s in review.scores %}
+        <div class="review-score-row">
+            <span class="review-score-label">{{ s.label }}</span>
+            <span class="mastery-bar"><i class="mastery-fill" style="--pct: {{ s.score }}%"></i></span>
+            <span class="review-score-num">{{ s.score }}</span>
+        </div>
+        {% endfor %}
+    </div>
+    {% if review.advice %}
+    <ul class="review-advice">
+        {% for a in review.advice %}<li>{{ a }}</li>{% endfor %}
+    </ul>
+    {% endif %}
+</div>
+{% endif %}
+<div class="feedback-card ok">
+    <p><strong>教练点评</strong></p>
+    <p>{{ tip }}</p>
+</div>
+<a href="{{ url_for('ai.chat', scenario=scenario) }}" class="btn btn-outline btn-block">重新开始该情景</a>
+{% else %}
+<form method="POST" action="{{ url_for('ai.chat') }}" class="chat-input-row" id="chatForm" data-ajax>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="text" name="msg" class="form-control" placeholder="输入你的回复…"
+           autocomplete="off" autocapitalize="off" enterkeyhint="send" required aria-label="对话回复输入">
+    <button type="submit" class="btn btn-primary">发送</button>
+</form>
+<form method="POST" action="{{ url_for('ai.chat') }}" class="mt-8">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="action" value="finish">
+    <button type="submit" class="btn btn-outline btn-block">结束并查看点评</button>
+</form>
+<button type="button" class="back-to-bottom" title="回到输入框" aria-label="回到输入框">↓</button>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ asset_url('js/ai_chat.js') }}"></script>
+{% endblock %}

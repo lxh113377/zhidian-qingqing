@@ -1,0 +1,801 @@
+openapi: '3.0.3'
+info:
+  title: iCAN 智电轻擎 API
+  description: |
+    智电轻擎（iCAN）多门店 AI 管理平台的只读开放 API。
+
+    ## 认证方式
+    数据端点使用 Bearer Token 认证：
+    ```
+    Authorization: Bearer ican_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+    ```
+
+    ## 租户隔离
+    所有数据端点自动限定在令牌所属商家范围内，跨商家访问返回 403/404。
+
+    ## 限流
+    按 IP/令牌归属计，默认 60 次/分钟。超限返回 429，并带 `Retry-After`；
+    每个响应都带 `X-RateLimit-Limit` / `X-RateLimit-Remaining` / `X-RateLimit-Reset`，
+    调用方无需靠撞 429 才得知剩余配额。
+
+    ## 错误响应形态
+    落在 `/api/v1/` 上的**全部**错误（含路由阶段的 404/405、无令牌 401、限流 429）一律返回
+    `application/json` 的 `Error` 体：`{ok:false, error:<机读码>, message:<人读文案>, request_id:<追踪编号>}`。
+    程序判断只认 `error`，`message` 是给人看的、措辞不承诺稳定。
+    浏览器路由（H5 与后台页面）仍返回 HTML 错误页 —— 两种形态按路径前缀分界，不由 Accept 头协商，
+    这样"忘记带 Accept 的脚本"也拿得到可解析的 JSON。
+
+    ## 分页
+    列表端点（`/sales/daily`、`/tasks`）用 `limit` + `cursor` 游标翻页：
+    `cursor` 传上一页的 `next_cursor`（首屏不传），响应回 `has_more` 与 `next_cursor`。
+    游标基于自增 id 而非 offset，因此并发写入不会造成漏行或重行。
+
+    ## Webhook 签名验证
+    出站事件携带 `X-ICAN-Signature: t=<unix>,sha256=<hex>` 头。
+    签名串为 `"<t>." + body`（时间戳参与签名），使用订阅时返回的签名密钥做 HMAC-SHA256。
+    接收方必须同时校验：① 签名匹配；② `t` 与本地时间偏差在容差内（默认 ±300 秒）。
+    只签 body 而不带时间戳的写法，攻击者抓到任意一次请求即可无限重放同一份合法签名。
+    头值按逗号分隔，允许同一事件携带多把密钥的签名（密钥轮换窗口内任一匹配即合法）。
+
+    ## 支持的事件类型
+    - `sales.submitted` — 店员提交日填报
+    - `task.status_changed` — 任务状态变更
+  version: '1.0.0'
+  contact:
+    name: iCAN Team
+  license:
+    name: Proprietary
+
+servers:
+  - url: https://lxh123.pythonanywhere.com/api/v1
+    description: 生产环境
+  - url: http://localhost:5000/api/v1
+    description: 本地开发
+
+tags:
+  - name: Meta
+    description: 探活与令牌信息
+  - name: Stores
+    description: 门店数据
+  - name: Dashboard
+    description: 看板聚合数据
+  - name: Sales
+    description: 销售流水数据
+  - name: Tasks
+    description: 任务数据
+  - name: Management
+    description: 令牌与 Webhook 管理（需 Session 登录 + Owner 角色）
+
+paths:
+  /meta:
+    get:
+      tags: [Meta]
+      summary: 探活并回显令牌可见范围
+      description: 验证令牌有效性，返回当前令牌的商家归属与门店可见数量。
+      operationId: getMeta
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                    example: true
+                  merchant_id:
+                    type: integer
+                    example: 1
+                  store_count:
+                    type: integer
+                    example: 7
+                  scopes:
+                    type: array
+                    description: 该令牌实际生效的只读作用域；存量 `read` 令牌展开为全部四类
+                    items:
+                      type: string
+                      enum: [stores:read, dashboard:read, sales:read, tasks:read]
+                    example: [dashboard:read, sales:read, stores:read, tasks:read]
+                  server_time:
+                    type: string
+                    format: date-time
+                    example: '2026-09-24T12:00:00Z'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '405':
+          description: 方法不允许（本端点只读）
+          headers:
+            Allow:
+              $ref: '#/components/headers/Allow'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+  /stores:
+    get:
+      tags: [Stores]
+      summary: 商家门店列表
+      description: 返回当前令牌可见的全部活跃门店。
+      operationId: listStores
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  stores:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Store'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+  /dashboard:
+    get:
+      tags: [Dashboard]
+      summary: 看板聚合数据
+      description: |
+        返回指定时间范围内逐店营收/销量/记录数汇总 + 总量。
+        使用 DB 侧 GROUP BY 聚合下推，无 N+1 问题。
+      operationId: getDashboard
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/DaysParam'
+        - $ref: '#/components/parameters/StoreIdParam'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  days:
+                    type: integer
+                    example: 30
+                  total_revenue:
+                    type: number
+                    format: float
+                    example: 125000.50
+                  total_quantity:
+                    type: integer
+                    example: 3500
+                  record_count:
+                    type: integer
+                    example: 210
+                  stores:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/StoreDashboard'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+  /sales/daily:
+    get:
+      tags: [Sales]
+      summary: 指定日期销售流水明细（游标翻页）
+      description: 按自增 id 升序返回指定日期的逐条销售记录，单页最多 500 条。
+      operationId: getSalesDaily
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: date
+          in: query
+          description: 查询日期（YYYY-MM-DD），默认今天
+          schema:
+            type: string
+            format: date
+            example: '2026-09-24'
+        - $ref: '#/components/parameters/StoreIdParam'
+        - $ref: '#/components/parameters/LimitParam'
+        - $ref: '#/components/parameters/CursorParam'
+      responses:
+        '200':
+          description: 成功
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  date:
+                    type: string
+                    format: date
+                  count:
+                    type: integer
+                  limit:
+                    type: integer
+                  has_more:
+                    type: boolean
+                  next_cursor:
+                    type: integer
+                    nullable: true
+                    description: 仅当 has_more=true 时非空；原样传给下一页的 cursor 参数
+                  records:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SalesRecord'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+  /sales/history:
+    get:
+      tags: [Sales]
+      summary: 近 N 天按日营收/销量汇总
+      description: 返回指定天数内按日聚合的营收/销量时间序列。
+      operationId: getSalesHistory
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/DaysParam'
+        - $ref: '#/components/parameters/StoreIdParam'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  days:
+                    type: integer
+                  series:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/DailyAggregate'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+  /tasks:
+    get:
+      tags: [Tasks]
+      summary: 任务列表（游标翻页）
+      description: 按自增 id 升序返回商家任务，支持按状态和门店过滤；单页最多 500 条。
+      operationId: listTasks
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          description: 按状态过滤
+          schema:
+            type: string
+            enum: [pending, in_progress, completed, overdue]
+        - $ref: '#/components/parameters/StoreIdParam'
+        - $ref: '#/components/parameters/LimitParam'
+        - $ref: '#/components/parameters/CursorParam'
+      responses:
+        '200':
+          description: 成功
+          headers:
+            X-RateLimit-Limit:
+              $ref: '#/components/headers/RateLimitLimit'
+            X-RateLimit-Remaining:
+              $ref: '#/components/headers/RateLimitRemaining'
+            X-RateLimit-Reset:
+              $ref: '#/components/headers/RateLimitReset'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  count:
+                    type: integer
+                  limit:
+                    type: integer
+                  has_more:
+                    type: boolean
+                  next_cursor:
+                    type: integer
+                    nullable: true
+                    description: 仅当 has_more=true 时非空；原样传给下一页的 cursor 参数
+                  tasks:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Task'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+  /tasks/{task_id}:
+    get:
+      tags: [Tasks]
+      summary: 单任务详情
+      description: 返回指定任务的详细信息。非本商家任务返回 404。
+      operationId: getTask
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: task_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  task:
+                    $ref: '#/components/schemas/TaskDetail'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /manage/tokens:
+    post:
+      tags: [Management]
+      summary: 签发只读 API 令牌
+      description: |
+        为当前老板商家签发一枚只读令牌。
+        **明文令牌仅此一次返回**，库内仅存哈希。
+        可选 `scopes` 实现最小权限签发；省略或传 `read` 即全部只读（存量口径）。
+      operationId: createToken
+      security:
+        - SessionAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  description: 用途备注名
+                  maxLength: 80
+                  example: '小程序对接'
+                scopes:
+                  type: string
+                  description: |
+                    逗号分隔的只读作用域子集（`stores:read` / `dashboard:read` /
+                    `sales:read` / `tasks:read`），或 `read` 表示全部只读。
+                    含未知值时整个请求返回 400，不会签发出一个永不放行的令牌。
+                  example: 'sales:read,tasks:read'
+      responses:
+        '201':
+          description: 签发成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  token_id:
+                    type: integer
+                  token:
+                    type: string
+                    description: 明文令牌（仅此一次返回）
+                    example: 'ican_a1b2c3d4e5f6...'
+                  scopes:
+                    type: string
+                    description: 落库的作用域原文（如 `read` 或 `sales:read,tasks:read`）
+                    example: 'sales:read,tasks:read'
+                  note:
+                    type: string
+        '400':
+          description: 作用域非法（含 DATA_SCOPES 之外的值）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /manage/tokens/{token_id}/revoke:
+    post:
+      tags: [Management]
+      summary: 吊销令牌
+      description: 吊销当前商家的一枚 API 令牌。
+      operationId: revokeToken
+      security:
+        - SessionAuth: []
+      parameters:
+        - name: token_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 吊销成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  revoked:
+                    type: integer
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /manage/webhooks:
+    post:
+      tags: [Management]
+      summary: 新增 Webhook 订阅
+      description: |
+        为当前商家新增 Webhook 订阅。
+        **签名密钥仅此一次返回**，用于验证出站事件签名。
+      operationId: subscribeWebhook
+      security:
+        - SessionAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [url]
+              properties:
+                url:
+                  type: string
+                  description: 回调 URL（必须以 http:// 或 https:// 开头）
+                  maxLength: 500
+                  example: 'https://example.com/webhook'
+                event_types:
+                  type: string
+                  description: '事件类型（逗号分隔，* 表示全部）'
+                  default: '*'
+                  example: 'sales.submitted,task.status_changed'
+      responses:
+        '201':
+          description: 订阅成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  webhook_id:
+                    type: integer
+                  signing_secret:
+                    type: string
+                    description: HMAC 签名密钥（仅此一次返回）
+                  note:
+                    type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /manage/webhooks/{sub_id}/revoke:
+    post:
+      tags: [Management]
+      summary: 停用 Webhook 订阅
+      description: 停用当前商家的一条 Webhook 订阅。
+      operationId: unsubscribeWebhook
+      security:
+        - SessionAuth: []
+      parameters:
+        - name: sub_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 停用成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  revoked:
+                    type: integer
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      description: 只读 API 令牌（`ican_` 前缀）
+    SessionAuth:
+      type: apiKey
+      in: cookie
+      name: session
+      description: Flask Session 登录（管理端点专用）
+
+  parameters:
+    DaysParam:
+      name: days
+      in: query
+      description: 查询天数（1~365）
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 365
+        default: 30
+        example: 30
+    StoreIdParam:
+      name: store_id
+      in: query
+      description: 门店 ID（不传则返回全部可见门店）
+      schema:
+        type: integer
+        example: 1
+    LimitParam:
+      name: limit
+      in: query
+      description: 单页条数（1~500，默认 100）；越界返回 400 而非静默夹取
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 500
+        default: 100
+        example: 100
+    CursorParam:
+      name: cursor
+      in: query
+      description: 上一页响应里的 next_cursor（自增 id 游标）；不传表示从第一条开始
+      schema:
+        type: integer
+        minimum: 0
+        example: 1200
+
+  headers:
+    RateLimitLimit:
+      description: 当前窗口的总请求数上限
+      schema:
+        type: integer
+        example: 60
+    RateLimitRemaining:
+      description: 当前窗口剩余可用请求数
+      schema:
+        type: integer
+        example: 42
+    RateLimitReset:
+      description: 最早一条记录滑出窗口所需的秒数
+      schema:
+        type: integer
+        example: 37
+    RetryAfter:
+      description: 建议的重试等待秒数（仅在 429 出现）
+      schema:
+        type: integer
+        example: 12
+    Allow:
+      description: 该路径允许的方法（RFC 9110 要求 405 必带；错误改 JSON 后仍需保留）
+      schema:
+        type: string
+        example: GET, OPTIONS, HEAD
+
+  schemas:
+    Store:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        code:
+          type: string
+        active_pack_id:
+          type: string
+
+    StoreDashboard:
+      type: object
+      properties:
+        store_id:
+          type: integer
+        store_name:
+          type: string
+        revenue:
+          type: number
+          format: float
+        quantity:
+          type: integer
+        records:
+          type: integer
+
+    SalesRecord:
+      type: object
+      properties:
+        id:
+          type: integer
+        store_id:
+          type: integer
+        product_name:
+          type: string
+        quantity:
+          type: number
+          format: float
+        revenue:
+          type: number
+          format: float
+        pack_id:
+          type: string
+
+    DailyAggregate:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+        revenue:
+          type: number
+          format: float
+        quantity:
+          type: integer
+
+    Task:
+      type: object
+      properties:
+        id:
+          type: integer
+        store_id:
+          type: integer
+        title:
+          type: string
+        status:
+          type: string
+          enum: [pending, in_progress, completed, overdue]
+        source:
+          type: string
+        due_date:
+          type: string
+          format: date
+          nullable: true
+
+    TaskDetail:
+      allOf:
+        - $ref: '#/components/schemas/Task'
+        - type: object
+          properties:
+            assignee_role:
+              type: string
+
+    Error:
+      type: object
+      description: |
+        统一错误体（对标第 22 轮 H48/H49）。四键恒定：`ok`/`error`/`message`/`request_id`。
+        `error` 是机读码（取值见 enum，与 `src/api_errors.py` 的 `ERROR_CODES` 由门禁第 34 项
+        双向对账，多一个少一个都判红）；`message` 是人读文案，**不得用作程序判断**；
+        `request_id` 与响应头 `X-Request-Id` 同源，报障时给这一个串就能在 JSONL 里定位该请求。
+        `granted`/`required` 仅在 `error=insufficient_scope` 时出现。
+        形态分界：落在 `/api/v1/` 上的错误一律 JSON；浏览器路由（H5/后台）仍回 HTML 错误页。
+      required: [ok, error, message]
+      properties:
+        ok:
+          type: boolean
+          example: false
+        error:
+          type: string
+          enum:
+            - bad_request
+            - conflict
+            - forbidden
+            - insufficient_scope
+            - internal_error
+            - method_not_allowed
+            - not_found
+            - rate_limited
+            - unauthorized
+            - unsupported_media_type
+          example: not_found
+        message:
+          type: string
+          description: 人读文案（中文），内容不承诺稳定
+        request_id:
+          type: string
+          description: 追踪编号；与 X-Request-Id 响应头同源，未生成时为空串
+        granted:
+          type: array
+          description: 仅 insufficient_scope 时出现：该令牌实际持有的作用域
+          items:
+            type: string
+        required:
+          type: string
+          description: 仅 insufficient_scope 时出现：本端点所需作用域
+
+  responses:
+    BadRequest:
+      description: 请求参数错误
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: 缺少或无效的 Bearer 令牌
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Forbidden:
+      description: |
+        权限不足。两类成因共用 403：
+        ① 管理端点非 Owner / 跨商家操作；
+        ② 数据端点所需作用域未授予该令牌，此时响应体为机读结构
+        `{ok:false, error:"insufficient_scope", message, granted:[...], required:"sales:read"}`，
+        接入方据此区分「令牌坏了」（401）与「没申请这个权限」（403 + insufficient_scope）。
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: 资源不存在（或不属于当前商家）
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    RateLimited:
+      description: 请求频率超限
+      headers:
+        Retry-After:
+          $ref: '#/components/headers/RetryAfter'
+        X-RateLimit-Limit:
+          $ref: '#/components/headers/RateLimitLimit'
+        X-RateLimit-Remaining:
+          $ref: '#/components/headers/RateLimitRemaining'
+        X-RateLimit-Reset:
+          $ref: '#/components/headers/RateLimitReset'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'

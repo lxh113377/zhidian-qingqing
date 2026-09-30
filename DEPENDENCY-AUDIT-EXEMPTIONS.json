@@ -1,0 +1,5 @@
+{
+ "schema": "ican-dependency-audit-exemptions-v1",
+ "policy": "每条豁免必须给真实漏洞 id（PYSEC/GHSA/CVE 形状）、≥20 字理由、ISO 到期日；到期即红、id 不在实测漏洞集合内即红（幽灵豁免=对空气放行）。",
+ "exemptions": []
+}

@@ -1,0 +1,57 @@
+{
+ "entries": [
+  {
+   "anchor_note": "",
+   "at": "2026-09-27T17:19:45+08:00",
+   "backup": "ican_20260927_035845.db",
+   "backup_path": "backups/ican_20260927_035845.db",
+   "backup_sha256": "6579ef8bbe8583b393ffccb5b9135a9f62dbb9345df815fd59a2f82850614e6c",
+   "face": "iCAN大学生创新创业大赛",
+   "forced": false,
+   "integrity": "ok",
+   "key_rows": {
+    "admin": 9,
+    "daily_sales": 2100,
+    "merchants": 1,
+    "products": 105,
+    "staff": 14,
+    "stores": 7
+   },
+   "mode": "restore",
+   "rc": 0,
+   "reconcile": "与证据卡对账",
+   "rollback_anchor": "",
+   "row_total": 2360,
+   "size_bytes": 696320,
+   "tables": 17,
+   "target": "_r33_check.db"
+  },
+  {
+   "anchor_note": "",
+   "at": "2026-09-27T17:19:45+08:00",
+   "backup": "ican_before_p007_20260927_094600.db",
+   "backup_path": "backups/ican_before_p007_20260927_094600.db",
+   "backup_sha256": "55e5b0d86cce6d847a1ad543f47442cf2914b9d46af85234c8265538a3bb150b",
+   "face": "iCAN大学生创新创业大赛",
+   "forced": true,
+   "integrity": "ok",
+   "key_rows": {
+    "admin": 10,
+    "daily_sales": 2101,
+    "merchants": 3,
+    "products": 105,
+    "staff": 15,
+    "stores": 9
+   },
+   "mode": "restore",
+   "rc": 0,
+   "reconcile": "缺证据件：ican_before_p007_20260927_094600.db.manifest.json",
+   "rollback_anchor": "_r33_check.db.pre-restore-20260927_171945.bak",
+   "row_total": 2382,
+   "size_bytes": 778240,
+   "tables": 18,
+   "target": "_r33_check.db"
+  }
+ ],
+ "schema_version": "ican-restore-evidence-v1"
+}

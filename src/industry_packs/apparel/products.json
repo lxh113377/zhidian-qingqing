@@ -1,0 +1,17 @@
+[
+  {"product_name": "基础白T恤", "unit_price": 79.0, "cost_price": 22.0, "category": "上衣"},
+  {"product_name": "纯棉衬衫", "unit_price": 199.0, "cost_price": 58.0, "category": "上衣"},
+  {"product_name": "直筒牛仔裤", "unit_price": 259.0, "cost_price": 78.0, "category": "裤装"},
+  {"product_name": "针织开衫", "unit_price": 229.0, "cost_price": 65.0, "category": "外套"},
+  {"product_name": "羊毛大衣", "unit_price": 899.0, "cost_price": 280.0, "category": "外套"},
+  {"product_name": "轻薄羽绒服", "unit_price": 699.0, "cost_price": 210.0, "category": "外套"},
+  {"product_name": "西装外套", "unit_price": 599.0, "cost_price": 180.0, "category": "外套"},
+  {"product_name": "A字连衣裙", "unit_price": 329.0, "cost_price": 95.0, "category": "裙装"},
+  {"product_name": "阔腿裤", "unit_price": 239.0, "cost_price": 70.0, "category": "裤装"},
+  {"product_name": "卫衣", "unit_price": 189.0, "cost_price": 55.0, "category": "上衣"},
+  {"product_name": "半身裙", "unit_price": 219.0, "cost_price": 62.0, "category": "裙装"},
+  {"product_name": "真丝围巾", "unit_price": 159.0, "cost_price": 45.0, "category": "配饰"},
+  {"product_name": "帆布鞋", "unit_price": 269.0, "cost_price": 85.0, "category": "鞋履"},
+  {"product_name": "皮质腰带", "unit_price": 129.0, "cost_price": 38.0, "category": "配饰"},
+  {"product_name": "基础内衣套装", "unit_price": 159.0, "cost_price": 48.0, "category": "内衣"}
+]

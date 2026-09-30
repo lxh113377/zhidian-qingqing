@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% import "_icons.html" as icons %}
+{% block title %}只读演示 · AI 决策驾驶舱{% endblock %}
+
+{% block nav %}
+<nav class="top-nav">
+    <div class="nav-brand"><span class="brand-logo brand-nav" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 10h9v6a3.5 3.5 0 0 1-3.5 3.5H9.5A3.5 3.5 0 0 1 6 16v-6z"/><path d="M15 11h1.5a2 2 0 0 1 0 4H15"/><path d="M8.5 4.5c-.9.8-1.4 1.6-1.4 2.6M12 3.5c-.9.8-1.4 1.6-1.4 2.6M15.5 4.5c-.9.8-1.4 1.6-1.4 2.6" fill="none"/></svg></span>门店管理</div>
+    <div class="nav-user">
+        <span class="badge badge-secondary">只读演示</span>
+        <a class="btn-pack-switch" href="{{ url_for('auth.login') }}">登录体验完整闭环</a>
+    </div>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>{{ icons.ai(20) }} AI 决策驾驶舱 · 只读演示</h2>
+</div>
+
+<section class="decision-cockpit" id="demoCockpit">
+    <div class="decision-status-bar">
+        <span class="badge badge-secondary">免登录</span>
+        <span class="badge badge-secondary">只读</span>
+        <span class="badge badge-secondary">规则版（不调用大模型）</span>
+        <span>演示商家：{{ merchant_name }}</span>
+        <span>覆盖门店：{{ store_count }} 家</span>
+    </div>
+    <p class="decision-note">
+        本页固定绑定一个合成演示商家，门店范围由服务端解析，不接受任何请求参数；
+        页面不写数据库、不写决策轨迹、不创建任务。需要查看真实模型调用与人工确认闭环，
+        请登录后在管理员驾驶舱内操作。
+    </p>
+
+    {% with readonly = True %}
+        {% include "admin/_decision_cockpit_inner.html" %}
+    {% endwith %}
+</section>
+{% endblock %}
